@@ -11,6 +11,7 @@ export const es = {
     "No puedes actualizar el estado del usuario con rol SuperAdmin",
   invalidRole: "Rol inválido",
   cannotDisableOwnAccount: "No puedes deshabilitar tu propia cuenta",
+  userIdAlreadyExists: "El ID de usuario ya existe",
 } as const;
 
 export type UserLocale = typeof es;

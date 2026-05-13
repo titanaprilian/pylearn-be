@@ -1,5 +1,5 @@
 import { prisma } from "@/libs/prisma";
-import type { LoginInput } from "./schema";
+import type { LoginInput, LoginByUserIdInput } from "./schema";
 import { AccountDisabledError, UnauthorizedError } from "@libs/exceptions";
 import { parseDuration } from "@/utils/time";
 import { env } from "@/config/env";
@@ -30,6 +30,45 @@ export abstract class AuthService {
     }
 
     log.info({ userId: user.id, email }, "User logged in successfully");
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      tokenVersion: user.tokenVersion,
+    };
+  }
+
+  static async loginByUserId(
+    data: LoginByUserIdInput,
+    log: Logger,
+    locale: string = "en",
+  ) {
+    const userId = data.user_id;
+    log.debug({ userId }, "Login by user_id attempt initiated");
+
+    const user = await prisma.user.findUnique({
+      where: { userId },
+    });
+    if (!user) {
+      log.warn({ userId }, "Login by user_id failed: User not found");
+      return null;
+    }
+
+    const valid = await Bun.password.verify(data.password, user.password);
+    if (!valid) {
+      log.warn({ userId }, "Login by user_id failed: Invalid password");
+      return null;
+    }
+
+    if (!user.isActive) {
+      log.warn({ userId }, "Login by user_id failed: Account disabled");
+      throw new AccountDisabledError(locale);
+    }
+
+    log.info(
+      { userId: user.id, userIdValue: user.userId },
+      "User logged in by user_id successfully",
+    );
     return {
       id: user.id,
       email: user.email,

@@ -1,6 +1,11 @@
 import { AuthService } from "./service";
 import { AuthModel } from "./model";
-import { LoginSchema, RefreshTokenSchema, TokenSchema } from "./schema";
+import {
+  LoginSchema,
+  LoginByUserIdSchema,
+  RefreshTokenSchema,
+  TokenSchema,
+} from "./schema";
 import { errorResponse, successResponse } from "@/libs/response";
 import { accessJwt, refreshJwt } from "@/plugins/jwt";
 import { env } from "@/config/env";
@@ -83,6 +88,69 @@ const publicAuth = createBaseApp()
     },
     {
       body: LoginSchema,
+      security: [{}], // Public route
+      response: {
+        200: AuthModel.login,
+        400: AuthModel.validationError,
+        401: AuthModel.unauthorizedError,
+        403: AuthModel.accountDisabledError,
+        500: AuthModel.error,
+      },
+    },
+  )
+  .post(
+    "/login-id",
+    async ({ body, set, cookie, log, accessJwt, refreshJwt, locale }) => {
+      const user = await AuthService.loginByUserId(body, log, locale);
+
+      if (!user) {
+        return errorResponse(
+          set,
+          401,
+          { key: "auth.invalidCredentials" },
+          null,
+          locale,
+        );
+      }
+
+      const tokenId = await AuthService.createRefreshToken(user.id);
+
+      const accessToken = await accessJwt.sign({
+        sub: user.id,
+        tv: user.tokenVersion,
+      });
+
+      const refreshToken = await refreshJwt.sign({
+        sub: user.id,
+        tv: user.tokenVersion,
+        jti: tokenId,
+      });
+
+      cookie.refresh_token.set({
+        value: refreshToken,
+        ...cookieOptions,
+        maxAge: REFRESH_TOKEN_MAX_AGE,
+      });
+
+      return successResponse(
+        set,
+        {
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          },
+        },
+        { key: "auth.loginSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      body: LoginByUserIdSchema,
       security: [{}], // Public route
       response: {
         200: AuthModel.login,

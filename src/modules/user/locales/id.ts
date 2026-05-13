@@ -12,6 +12,7 @@ export const id = {
     "Tidak dapat memperbarui status pengguna dengan peran SuperAdmin",
   invalidRole: "Peran tidak valid",
   cannotDisableOwnAccount: "Anda tidak dapat menonaktifkan akun Anda sendiri",
+  userIdAlreadyExists: "ID pengguna sudah ada",
 } as const;
 
 export type UserLocale = typeof id;

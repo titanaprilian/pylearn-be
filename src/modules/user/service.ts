@@ -8,6 +8,7 @@ import type { Logger } from "pino";
 export const SAFE_USER_SELECT = {
   id: true,
   email: true,
+  userId: true,
   name: true,
   isActive: true,
   roleId: true,
@@ -54,11 +55,12 @@ export abstract class UserService {
       where.isActive = isActive;
     }
 
-    // Filter: Search (Name OR Email)
+    // Filter: Search (Name OR Email OR UserId)
     if (search) {
       where.OR = [
         { name: { contains: search } },
         { email: { contains: search } },
+        { userId: { contains: search } },
       ];
     }
 

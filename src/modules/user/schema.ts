@@ -7,6 +7,7 @@ export const CreateUserSchema = z.object({
   password: z.string().min(8),
   roleId: z.string(),
   isActive: z.boolean().default(true),
+  userId: z.string().min(3).max(20).optional(),
 });
 
 export const UpdateUserSchema = z
@@ -16,6 +17,7 @@ export const UpdateUserSchema = z
     password: z.string().min(8).optional(),
     roleId: z.string().optional(),
     isActive: z.boolean().optional(),
+    userId: z.string().min(3).max(20).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field must be provided for update",

@@ -38,7 +38,7 @@ describe("POST /auth/login - Login i18n", () => {
 
     const body = await response.json();
     expect(response.status).toBe(401);
-    expect(body.message).toBe("Invalid email or password");
+    expect(body.message).toBe("Invalid credentials");
   });
 
   it("should return Spanish message when Accept-Language is es", async () => {
@@ -61,7 +61,7 @@ describe("POST /auth/login - Login i18n", () => {
 
     const body = await response.json();
     expect(response.status).toBe(401);
-    expect(body.message).toBe("Email o contraseña inválidos");
+    expect(body.message).toBe("Credenciales inválidas");
   });
 
   it("should return Indonesian message when Accept-Language is id", async () => {
@@ -84,7 +84,7 @@ describe("POST /auth/login - Login i18n", () => {
 
     const body = await response.json();
     expect(response.status).toBe(401);
-    expect(body.message).toBe("Email atau kata sandi tidak valid");
+    expect(body.message).toBe("Kredensial tidak valid");
   });
 
   it("should return English message by default when no Accept-Language header", async () => {
@@ -106,7 +106,7 @@ describe("POST /auth/login - Login i18n", () => {
 
     const body = await response.json();
     expect(response.status).toBe(401);
-    expect(body.message).toBe("Invalid email or password");
+    expect(body.message).toBe("Invalid credentials");
   });
 
   it("should return Spanish message when Accept-Language is es-ES", async () => {
@@ -129,7 +129,7 @@ describe("POST /auth/login - Login i18n", () => {
 
     const body = await response.json();
     expect(response.status).toBe(401);
-    expect(body.message).toBe("Email o contraseña inválidos");
+    expect(body.message).toBe("Credenciales inválidas");
   });
 
   it("should return Indonesian message when Accept-Language is id-ID", async () => {
@@ -152,7 +152,7 @@ describe("POST /auth/login - Login i18n", () => {
 
     const body = await response.json();
     expect(response.status).toBe(401);
-    expect(body.message).toBe("Email atau kata sandi tidak valid");
+    expect(body.message).toBe("Kredensial tidak valid");
   });
 });
 
