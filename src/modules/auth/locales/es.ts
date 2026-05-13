@@ -9,7 +9,7 @@ export const es = {
   registerFailed: "Registro fallido",
   emailAlreadyExists: "El email ya existe",
   emailNotFound: "Email no encontrado",
-  invalidCredentials: "Email o contraseña inválidos",
+  invalidCredentials: "Credenciales inválidas",
   accountDisabled: "Tu cuenta ha sido deshabilitada.",
   accountNotVerified: "Cuenta no verificada",
   passwordChanged: "Contraseña cambiada exitosamente",

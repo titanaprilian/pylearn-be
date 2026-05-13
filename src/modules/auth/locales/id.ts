@@ -9,7 +9,7 @@ export const id = {
   registerFailed: "Pendaftaran gagal",
   emailAlreadyExists: "Email sudah ada",
   emailNotFound: "Email tidak ditemukan",
-  invalidCredentials: "Email atau kata sandi tidak valid",
+  invalidCredentials: "Kredensial tidak valid",
   accountDisabled: "Akun Anda telah dinonaktifkan.",
   accountNotVerified: "Akun belum diverifikasi",
   passwordChanged: "Kata sandi berhasil diubah",

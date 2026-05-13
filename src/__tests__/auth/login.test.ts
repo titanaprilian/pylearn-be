@@ -108,7 +108,7 @@ describe("POST /auth/login", () => {
 
     const body = await response.json();
     expect(response.status).toBe(401);
-    expect(body.message).toBe("Invalid email or password");
+    expect(body.message).toBe("Invalid credentials");
   });
 
   it("should return 401 for non-existent email", async () => {

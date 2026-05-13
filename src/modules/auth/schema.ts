@@ -9,6 +9,14 @@ export const LoginSchema = z.object({
 });
 
 /**
+ * Schema for login by user_id
+ */
+export const LoginByUserIdSchema = z.object({
+  user_id: z.string().min(3).max(20),
+  password: z.string().min(8),
+});
+
+/**
  * Schema for token
  */
 export const TokenSchema = z.object({
@@ -24,3 +32,4 @@ export const RefreshTokenSchema = z.object({
  * Inferred types
  */
 export type LoginInput = z.infer<typeof LoginSchema>;
+export type LoginByUserIdInput = z.infer<typeof LoginByUserIdSchema>;

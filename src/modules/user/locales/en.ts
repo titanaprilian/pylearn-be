@@ -12,6 +12,7 @@ export const en = {
     "Operation Forbidden: You cannot update user status to inactive with SuperAdmin role",
   invalidRole: "Invalid role",
   cannotDisableOwnAccount: "You cannot disable your own account",
+  userIdAlreadyExists: "User ID already exists",
 } as const;
 
 export type UserLocale = typeof en;
