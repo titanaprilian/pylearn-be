@@ -29,11 +29,13 @@ export const QuizParamSchema = z.object({
 
 export const CreateQuizQuestionSchema = z.object({
   questionText: z.string().min(1, "Question text is required"),
+  answerText: z.string().min(1, "Answer text is required"),
   maxScore: z.number().int().min(0).optional().default(100),
 });
 
 export const UpdateQuizQuestionSchema = z.object({
   questionText: z.string().min(1).optional(),
+  answerText: z.string().min(1).optional(),
   maxScore: z.number().int().min(0).optional(),
 });
 

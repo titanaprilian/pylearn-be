@@ -82,13 +82,18 @@ describe("Quiz Questions API", () => {
         new Request(url, {
           method: "POST",
           headers: authHeaders,
-          body: JSON.stringify({ questionText: "Question 1", maxScore: 50 }),
+          body: JSON.stringify({
+            questionText: "Question 1",
+            answerText: "Answer 1",
+            maxScore: 50,
+          }),
         }),
       );
       expect(res1.status).toBe(201);
       const body1 = await res1.json();
       expect(body1.data.questionOrder).toBe(1);
       expect(body1.data.questionText).toBe("Question 1");
+      expect(body1.data.answerText).toBe("Answer 1");
       expect(body1.data.maxScore).toBe(50);
 
       // Second question
@@ -96,12 +101,16 @@ describe("Quiz Questions API", () => {
         new Request(url, {
           method: "POST",
           headers: authHeaders,
-          body: JSON.stringify({ questionText: "Question 2" }),
+          body: JSON.stringify({
+            questionText: "Question 2",
+            answerText: "Answer 2",
+          }),
         }),
       );
       expect(res2.status).toBe(201);
       const body2 = await res2.json();
       expect(body2.data.questionOrder).toBe(2);
+      expect(body2.data.answerText).toBe("Answer 2");
       expect(body2.data.maxScore).toBe(100); // Default
     });
   });
@@ -114,6 +123,7 @@ describe("Quiz Questions API", () => {
         data: {
           quizId: BigInt(quizId),
           questionText: "Question 1",
+          answerText: "Answer 1",
           questionOrder: 1,
         },
       });
@@ -130,6 +140,7 @@ describe("Quiz Questions API", () => {
       expect(body.data.length).toBe(1);
       expect(body.data[0].quizTitle).toBe("Quiz 1");
       expect(body.data[0].quizId).toBe(quizId);
+      expect(body.data[0].answerText).toBe("Answer 1");
     });
   });
 
@@ -139,6 +150,7 @@ describe("Quiz Questions API", () => {
         data: {
           quizId: BigInt(quizId),
           questionText: "Original Text",
+          answerText: "Original Answer",
           maxScore: 10,
           questionOrder: 1,
         },
@@ -149,13 +161,18 @@ describe("Quiz Questions API", () => {
         new Request(url, {
           method: "PATCH",
           headers: authHeaders,
-          body: JSON.stringify({ questionText: "Updated Text", maxScore: 20 }),
+          body: JSON.stringify({
+            questionText: "Updated Text",
+            answerText: "Updated Answer",
+            maxScore: 20,
+          }),
         }),
       );
 
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.data.questionText).toBe("Updated Text");
+      expect(body.data.answerText).toBe("Updated Answer");
       expect(body.data.maxScore).toBe(20);
     });
   });
@@ -163,10 +180,20 @@ describe("Quiz Questions API", () => {
   describe("DELETE /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId", () => {
     it("should block deletion if not the last question", async () => {
       const q1 = await prisma.quizQuestion.create({
-        data: { quizId: BigInt(quizId), questionText: "Q1", questionOrder: 1 },
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Q1",
+          answerText: "A1",
+          questionOrder: 1,
+        },
       });
       await prisma.quizQuestion.create({
-        data: { quizId: BigInt(quizId), questionText: "Q2", questionOrder: 2 },
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Q2",
+          answerText: "A2",
+          questionOrder: 2,
+        },
       });
 
       const url = `${baseUrl(materialId, levelId, quizId)}/${q1.id.toString()}`;
@@ -184,7 +211,12 @@ describe("Quiz Questions API", () => {
 
     it("should allow deletion of the last question", async () => {
       const q1 = await prisma.quizQuestion.create({
-        data: { quizId: BigInt(quizId), questionText: "Q1", questionOrder: 1 },
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Q1",
+          answerText: "A1",
+          questionOrder: 1,
+        },
       });
 
       const url = `${baseUrl(materialId, levelId, quizId)}/${q1.id.toString()}`;
