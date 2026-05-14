@@ -58,8 +58,22 @@ model MaterialLevel {
   levelOrder  Int
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  quizzes     Quiz[]
 
   @@unique([materialId, levelOrder])
+}
+
+model Quiz {
+  id              BigInt        @id @default(autoincrement())
+  materialLevelId BigInt
+  materialLevel   MaterialLevel @relation(fields: [materialLevelId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?       @db.Text
+  startTime       DateTime?
+  endTime         DateTime?
+  isPublished     Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model RefreshToken {
