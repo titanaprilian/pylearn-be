@@ -52,7 +52,9 @@ export const QuizDeleteSafe = z.object({
 // ==========================================
 export const QuizQuestionSafe = z.object({
   id: z.string(),
-  quizId: z.string(),
+  quizLevelId: z.string(),
+  quizLevelTitle: z.string().optional(),
+  quizId: z.string().optional(),
   quizTitle: z.string().optional(),
   questionText: z.string(),
   answerText: z.string(),

@@ -81,8 +81,8 @@ model QuizLevel {
 
 model QuizQuestion {
   id            BigInt            @id @default(autoincrement())
-  quizId        BigInt
-  quiz          Quiz              @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizLevelId   BigInt
+  quizLevel     QuizLevel         @relation(fields: [quizLevelId], references: [id], onDelete: Cascade)
   questionText  String            @db.Text
   answerText    String            @db.Text
   maxScore      Int               @default(100)
@@ -90,10 +90,10 @@ model QuizQuestion {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   keywords      QuestionKeyword[]
-  QuizLevel     QuizLevel?        @relation(fields: [quizLevelId], references: [id])
-  quizLevelId   BigInt?
+  Quiz          Quiz?             @relation(fields: [quizId], references: [id])
+  quizId        BigInt?
 
-  @@unique([quizId, questionOrder])
+  @@unique([quizLevelId, questionOrder])
 }
 
 model QuestionKeyword {

@@ -60,20 +60,40 @@ export const UpdateQuizLevelSchema = z.object({
 // Question Schema
 // ==========================================
 export const GetQuestionsQuerySchema = z.object({
-  quizId: z.string().describe("Required Quiz ID"),
+  quizLevelId: z
+    .string()
+    .min(1, "Quiz Level ID is required")
+    .describe("Required Quiz Level ID"),
 });
 
 export const CreateQuizQuestionSchema = z.object({
-  quizId: z.string().min(1, "Quiz ID is required"),
+  quizLevelId: z.string().min(1, "Quiz Level ID is required"), // Updated from quizId
   questionText: z.string().min(1, "Question text is required"),
   answerText: z.string().min(1, "Answer text is required"),
-  maxScore: z.number().int().min(0).optional().default(100),
+  maxScore: z
+    .number()
+    .int()
+    .positive("Max score must be a positive integer")
+    .default(100),
+  questionOrder: z
+    .number()
+    .int()
+    .positive("Question order must be a positive integer"),
 });
 
 export const UpdateQuizQuestionSchema = z.object({
-  questionText: z.string().min(1).optional(),
-  answerText: z.string().min(1).optional(),
-  maxScore: z.number().int().min(0).optional(),
+  questionText: z.string().min(1, "Question text cannot be empty").optional(),
+  answerText: z.string().min(1, "Answer text cannot be empty").optional(),
+  maxScore: z
+    .number()
+    .int()
+    .positive("Max score must be a positive integer")
+    .optional(),
+  questionOrder: z
+    .number()
+    .int()
+    .positive("Question order must be a positive integer")
+    .optional(),
 });
 
 export const QuestionParamSchema = z.object({

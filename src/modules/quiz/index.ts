@@ -1,9 +1,4 @@
-import {
-  QuizService,
-  QuizQuestionService,
-  QuestionKeywordService,
-  QuizLevelService,
-} from "./service";
+import { QuizService, QuizQuestionService, QuizLevelService } from "./service";
 import { QuizModel } from "./model";
 import {
   CreateQuizSchema,
@@ -12,12 +7,8 @@ import {
   CreateQuizQuestionSchema,
   UpdateQuizQuestionSchema,
   QuestionParamSchema,
-  KeywordParamSchema,
-  CreateKeywordSchema,
-  UpdateKeywordSchema,
   GetQuizzesQuerySchema,
   GetQuestionsQuerySchema,
-  GetKeywordsQuerySchema,
   GetQuizLevelsQuerySchema,
   CreateQuizLevelSchema,
   UpdateQuizLevelSchema,
@@ -285,8 +276,11 @@ const protectedQuizzes = createProtectedApp()
   .get(
     "/questions",
     async ({ query, set, log, locale }) => {
-      const quizId = BigInt(query.quizId);
-      const questions = await QuizQuestionService.getQuestions(quizId, log);
+      const quizLevelId = BigInt(query.quizLevelId);
+      const questions = await QuizQuestionService.getQuestions(
+        quizLevelId,
+        log,
+      );
       return successResponse(
         set,
         questions,
@@ -384,109 +378,109 @@ const protectedQuizzes = createProtectedApp()
   )
 
   // Keywords
-  .get(
-    "/keywords",
-    async ({ query, set, log, locale }) => {
-      const questionId = BigInt(query.questionId);
-      const keywords = await QuestionKeywordService.getKeywords(
-        questionId,
-        log,
-      );
-      return successResponse(
-        set,
-        keywords,
-        { key: "quiz.keywordListSuccess" },
-        200,
-        undefined,
-        locale,
-      );
-    },
-    {
-      query: GetKeywordsQuerySchema,
-      response: {
-        200: QuizModel.keywords,
-        500: QuizModel.error,
-      },
-      beforeHandle: hasPermission(FEATURE_NAME, "read"),
-    },
-  )
-  .post(
-    "/keywords",
-    async ({ body, set, log, locale }) => {
-      const keyword = await QuestionKeywordService.createKeyword(body, log);
-      return successResponse(
-        set,
-        keyword,
-        { key: "quiz.keywordCreateSuccess" },
-        201,
-        undefined,
-        locale,
-      );
-    },
-    {
-      body: CreateKeywordSchema,
-      response: {
-        201: QuizModel.createKeywordResult,
-        400: QuizModel.validationError,
-        500: QuizModel.error,
-      },
-      beforeHandle: hasPermission(FEATURE_NAME, "create"),
-    },
-  )
-  .patch(
-    "/keywords/:id",
-    async ({ params, body, set, log, locale }) => {
-      const keywordId = BigInt(params.id);
-      const keyword = await QuestionKeywordService.updateKeyword(
-        keywordId,
-        body,
-        log,
-      );
-      return successResponse(
-        set,
-        keyword,
-        { key: "quiz.keywordUpdateSuccess" },
-        200,
-        undefined,
-        locale,
-      );
-    },
-    {
-      params: KeywordParamSchema,
-      body: UpdateKeywordSchema,
-      response: {
-        200: QuizModel.updateKeywordResult,
-        400: QuizModel.validationError,
-        404: QuizModel.error,
-        500: QuizModel.error,
-      },
-      beforeHandle: hasPermission(FEATURE_NAME, "update"),
-    },
-  )
-  .delete(
-    "/keywords/:id",
-    async ({ params, set, log, locale }) => {
-      const keywordId = BigInt(params.id);
-      const result = await QuestionKeywordService.deleteKeyword(keywordId, log);
-      return successResponse(
-        set,
-        result,
-        { key: "quiz.keywordDeleteSuccess" },
-        200,
-        undefined,
-        locale,
-      );
-    },
-    {
-      params: KeywordParamSchema,
-      response: {
-        200: QuizModel.deleteKeywordResult,
-        404: QuizModel.error,
-        500: QuizModel.error,
-      },
-      beforeHandle: hasPermission(FEATURE_NAME, "delete"),
-    },
-  )
+  // .get(
+  //   "/keywords",
+  //   async ({ query, set, log, locale }) => {
+  //     const questionId = BigInt(query.questionId);
+  //     const keywords = await QuestionKeywordService.getKeywords(
+  //       questionId,
+  //       log,
+  //     );
+  //     return successResponse(
+  //       set,
+  //       keywords,
+  //       { key: "quiz.keywordListSuccess" },
+  //       200,
+  //       undefined,
+  //       locale,
+  //     );
+  //   },
+  //   {
+  //     query: GetKeywordsQuerySchema,
+  //     response: {
+  //       200: QuizModel.keywords,
+  //       500: QuizModel.error,
+  //     },
+  //     beforeHandle: hasPermission(FEATURE_NAME, "read"),
+  //   },
+  // )
+  // .post(
+  //   "/keywords",
+  //   async ({ body, set, log, locale }) => {
+  //     const keyword = await QuestionKeywordService.createKeyword(body, log);
+  //     return successResponse(
+  //       set,
+  //       keyword,
+  //       { key: "quiz.keywordCreateSuccess" },
+  //       201,
+  //       undefined,
+  //       locale,
+  //     );
+  //   },
+  //   {
+  //     body: CreateKeywordSchema,
+  //     response: {
+  //       201: QuizModel.createKeywordResult,
+  //       400: QuizModel.validationError,
+  //       500: QuizModel.error,
+  //     },
+  //     beforeHandle: hasPermission(FEATURE_NAME, "create"),
+  //   },
+  // )
+  // .patch(
+  //   "/keywords/:id",
+  //   async ({ params, body, set, log, locale }) => {
+  //     const keywordId = BigInt(params.id);
+  //     const keyword = await QuestionKeywordService.updateKeyword(
+  //       keywordId,
+  //       body,
+  //       log,
+  //     );
+  //     return successResponse(
+  //       set,
+  //       keyword,
+  //       { key: "quiz.keywordUpdateSuccess" },
+  //       200,
+  //       undefined,
+  //       locale,
+  //     );
+  //   },
+  //   {
+  //     params: KeywordParamSchema,
+  //     body: UpdateKeywordSchema,
+  //     response: {
+  //       200: QuizModel.updateKeywordResult,
+  //       400: QuizModel.validationError,
+  //       404: QuizModel.error,
+  //       500: QuizModel.error,
+  //     },
+  //     beforeHandle: hasPermission(FEATURE_NAME, "update"),
+  //   },
+  // )
+  // .delete(
+  //   "/keywords/:id",
+  //   async ({ params, set, log, locale }) => {
+  //     const keywordId = BigInt(params.id);
+  //     const result = await QuestionKeywordService.deleteKeyword(keywordId, log);
+  //     return successResponse(
+  //       set,
+  //       result,
+  //       { key: "quiz.keywordDeleteSuccess" },
+  //       200,
+  //       undefined,
+  //       locale,
+  //     );
+  //   },
+  //   {
+  //     params: KeywordParamSchema,
+  //     response: {
+  //       200: QuizModel.deleteKeywordResult,
+  //       404: QuizModel.error,
+  //       500: QuizModel.error,
+  //     },
+  //     beforeHandle: hasPermission(FEATURE_NAME, "delete"),
+  //   },
+  // )
   .onError(({ error, set, locale }) => {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

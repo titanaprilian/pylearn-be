@@ -4,8 +4,6 @@ import type {
   UpdateQuizInput,
   CreateQuizQuestionInput,
   UpdateQuizQuestionInput,
-  CreateKeywordInput,
-  UpdateKeywordInput,
   CreateQuizLevelInput,
   UpdateQuizLevelInput,
 } from "./schema";
@@ -299,40 +297,50 @@ export abstract class QuizService {
 
 export const SAFE_QUESTION_SELECT = {
   id: true,
-  quizId: true,
+  quizLevelId: true, // Updated from quizId
   questionText: true,
   answerText: true,
   maxScore: true,
   questionOrder: true,
   createdAt: true,
   updatedAt: true,
-  quiz: {
+  quizLevel: {
     select: {
-      id: true,
       title: true,
+      quiz: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
     },
   },
 } as const;
 
 export abstract class QuizQuestionService {
-  static async getQuestions(quizId: bigint, log: Logger) {
-    log.debug({ quizId: quizId.toString() }, "Fetching questions for quiz");
+  static async getQuestions(quizLevelId: bigint, log: Logger) {
+    log.debug(
+      { quizLevelId: quizLevelId.toString() },
+      "Fetching questions for quiz level",
+    );
 
     const questions = await prisma.quizQuestion.findMany({
-      where: { quizId },
+      where: { quizLevelId },
       select: SAFE_QUESTION_SELECT,
       orderBy: { questionOrder: "asc" },
     });
 
     log.info(
-      { quizId: quizId.toString(), count: questions.length },
+      { quizLevelId: quizLevelId.toString(), count: questions.length },
       "Questions retrieved successfully",
     );
 
     return questions.map((q) => ({
       id: q.id.toString(),
-      quizId: q.quizId.toString(),
-      quizTitle: q.quiz.title,
+      quizLevelId: q.quizLevelId.toString(),
+      quizLevelTitle: q.quizLevel.title,
+      quizId: q.quizLevel.quiz.id.toString(),
+      quizTitle: q.quizLevel.quiz.title,
       questionText: q.questionText,
       answerText: q.answerText,
       maxScore: q.maxScore,
@@ -342,23 +350,29 @@ export abstract class QuizQuestionService {
     }));
   }
 
+  // ==========================================
+  // 2. CREATE A QUESTION
+  // ==========================================
   static async createQuestion(data: CreateQuizQuestionInput, log: Logger) {
-    const quizId = BigInt(data.quizId);
+    const quizLevelId = BigInt(data.quizLevelId);
     log.debug(
-      { quizId: quizId.toString(), questionText: data.questionText },
+      { quizLevelId: quizLevelId.toString(), questionText: data.questionText },
       "Creating new quiz question",
     );
 
+    // Auto-calculate order sequence inside this specific level
     const maxOrder = await prisma.quizQuestion.aggregate({
-      where: { quizId },
+      where: { quizLevelId },
       _max: { questionOrder: true },
     });
 
-    const newOrder = (maxOrder._max.questionOrder ?? 0) + 1;
+    // Fallback if it's the first question or use explicitly passed value if needed
+    const newOrder =
+      data.questionOrder ?? (maxOrder._max.questionOrder ?? 0) + 1;
 
     const question = await prisma.quizQuestion.create({
       data: {
-        quizId,
+        quizLevelId,
         questionText: data.questionText,
         answerText: data.answerText,
         maxScore: data.maxScore ?? 100,
@@ -369,7 +383,7 @@ export abstract class QuizQuestionService {
 
     log.info(
       {
-        quizId: quizId.toString(),
+        quizLevelId: quizLevelId.toString(),
         questionId: question.id.toString(),
         order: newOrder,
       },
@@ -378,8 +392,10 @@ export abstract class QuizQuestionService {
 
     return {
       id: question.id.toString(),
-      quizId: question.quizId.toString(),
-      quizTitle: question.quiz.title,
+      quizLevelId: question.quizLevelId.toString(),
+      quizLevelTitle: question.quizLevel.title,
+      quizId: question.quizLevel.quiz.id.toString(),
+      quizTitle: question.quizLevel.quiz.title,
       questionText: question.questionText,
       answerText: question.answerText,
       maxScore: question.maxScore,
@@ -389,6 +405,9 @@ export abstract class QuizQuestionService {
     };
   }
 
+  // ==========================================
+  // 3. UPDATE A QUESTION
+  // ==========================================
   static async updateQuestion(
     questionId: bigint,
     data: UpdateQuizQuestionInput,
@@ -402,6 +421,7 @@ export abstract class QuizQuestionService {
         questionText: data.questionText,
         answerText: data.answerText,
         maxScore: data.maxScore,
+        questionOrder: data.questionOrder,
       },
       select: SAFE_QUESTION_SELECT,
     });
@@ -413,8 +433,10 @@ export abstract class QuizQuestionService {
 
     return {
       id: question.id.toString(),
-      quizId: question.quizId.toString(),
-      quizTitle: question.quiz.title,
+      quizLevelId: question.quizLevelId.toString(),
+      quizLevelTitle: question.quizLevel.title,
+      quizId: question.quizLevel.quiz.id.toString(),
+      quizTitle: question.quizLevel.quiz.title,
       questionText: question.questionText,
       answerText: question.answerText,
       maxScore: question.maxScore,
@@ -424,13 +446,16 @@ export abstract class QuizQuestionService {
     };
   }
 
+  // ==========================================
+  // 4. DELETE A QUESTION (With sequence reordering)
+  // ==========================================
   static async deleteQuestion(questionId: bigint, log: Logger) {
     log.debug({ questionId: questionId.toString() }, "Deleting quiz question");
 
     return await prisma.$transaction(async (tx) => {
       const question = await tx.quizQuestion.findUnique({
         where: { id: questionId },
-        select: { quizId: true, questionOrder: true },
+        select: { quizLevelId: true, questionOrder: true },
       });
 
       if (!question) {
@@ -443,10 +468,10 @@ export abstract class QuizQuestionService {
       // Delete the targeted question
       await tx.quizQuestion.delete({ where: { id: questionId } });
 
-      // Shift all sequential questions down by 1 to maintain structural continuity
+      // Shift sequential questions down by 1 within this LEVEL only
       await tx.quizQuestion.updateMany({
         where: {
-          quizId: question.quizId,
+          quizLevelId: question.quizLevelId, // Updated scope
           questionOrder: { gt: question.questionOrder },
         },
         data: {
@@ -456,7 +481,7 @@ export abstract class QuizQuestionService {
 
       log.info(
         { questionId: questionId.toString() },
-        "Quiz question deleted and sequence reordered",
+        "Quiz question deleted and sequence reordered within level",
       );
       return { id: questionId.toString() };
     });
@@ -483,120 +508,120 @@ export const SAFE_KEYWORD_SELECT = {
   },
 } as const;
 
-export abstract class QuestionKeywordService {
-  static async getKeywords(questionId: bigint, log: Logger) {
-    log.debug(
-      { questionId: questionId.toString() },
-      "Fetching keywords for question",
-    );
-
-    const keywords = await prisma.questionKeyword.findMany({
-      where: { questionId },
-      select: SAFE_KEYWORD_SELECT,
-      orderBy: { blankOrder: "asc" },
-    });
-
-    log.info(
-      { questionId: questionId.toString(), count: keywords.length },
-      "Keywords retrieved successfully",
-    );
-
-    return keywords.map((k) => ({
-      id: k.id.toString(),
-      questionId: k.questionId.toString(),
-      quizId: k.question.quiz.id.toString(),
-      quizTitle: k.question.quiz.title,
-      blankOrder: k.blankOrder,
-      correctAnswer: k.correctAnswer,
-      createdAt: k.createdAt.toISOString(),
-      updatedAt: k.updatedAt.toISOString(),
-    }));
-  }
-
-  static async createKeyword(data: CreateKeywordInput, log: Logger) {
-    const questionId = BigInt(data.questionId);
-    log.debug(
-      { questionId: questionId.toString(), blankOrder: data.blankOrder },
-      "Creating new keyword",
-    );
-
-    const keyword = await prisma.questionKeyword.create({
-      data: {
-        questionId,
-        blankOrder: data.blankOrder,
-        correctAnswer: data.correctAnswer,
-      },
-      select: SAFE_KEYWORD_SELECT,
-    });
-
-    log.info(
-      { keywordId: keyword.id.toString(), blankOrder: keyword.blankOrder },
-      "Keyword created successfully",
-    );
-
-    return {
-      id: keyword.id.toString(),
-      questionId: keyword.questionId.toString(),
-      quizId: keyword.question.quiz.id.toString(),
-      quizTitle: keyword.question.quiz.title,
-      blankOrder: keyword.blankOrder,
-      correctAnswer: keyword.correctAnswer,
-      createdAt: keyword.createdAt.toISOString(),
-      updatedAt: keyword.updatedAt.toISOString(),
-    };
-  }
-
-  static async updateKeyword(
-    keywordId: bigint,
-    data: UpdateKeywordInput,
-    log: Logger,
-  ) {
-    log.debug({ keywordId: keywordId.toString() }, "Updating keyword");
-
-    const keyword = await prisma.questionKeyword.update({
-      where: { id: keywordId },
-      data: {
-        blankOrder: data.blankOrder,
-        correctAnswer: data.correctAnswer,
-      },
-      select: SAFE_KEYWORD_SELECT,
-    });
-
-    log.info(
-      { keywordId: keyword.id.toString() },
-      "Keyword updated successfully",
-    );
-
-    return {
-      id: keyword.id.toString(),
-      questionId: keyword.questionId.toString(),
-      quizId: keyword.question.quiz.id.toString(),
-      quizTitle: keyword.question.quiz.title,
-      blankOrder: keyword.blankOrder,
-      correctAnswer: keyword.correctAnswer,
-      createdAt: keyword.createdAt.toISOString(),
-      updatedAt: keyword.updatedAt.toISOString(),
-    };
-  }
-
-  static async deleteKeyword(keywordId: bigint, log: Logger) {
-    log.debug({ keywordId: keywordId.toString() }, "Deleting keyword");
-
-    const keyword = await prisma.questionKeyword.delete({
-      where: { id: keywordId },
-      select: { id: true },
-    });
-
-    log.info(
-      { keywordId: keyword.id.toString() },
-      "Keyword deleted successfully",
-    );
-
-    return {
-      id: keyword.id.toString(),
-    };
-  }
-}
+// export abstract class QuestionKeywordService {
+//   static async getKeywords(questionId: bigint, log: Logger) {
+//     log.debug(
+//       { questionId: questionId.toString() },
+//       "Fetching keywords for question",
+//     );
+//
+//     const keywords = await prisma.questionKeyword.findMany({
+//       where: { questionId },
+//       select: SAFE_KEYWORD_SELECT,
+//       orderBy: { blankOrder: "asc" },
+//     });
+//
+//     log.info(
+//       { questionId: questionId.toString(), count: keywords.length },
+//       "Keywords retrieved successfully",
+//     );
+//
+//     return keywords.map((k) => ({
+//       id: k.id.toString(),
+//       questionId: k.questionId.toString(),
+//       quizId: k.question.quiz.id.toString(),
+//       quizTitle: k.question.quiz.title,
+//       blankOrder: k.blankOrder,
+//       correctAnswer: k.correctAnswer,
+//       createdAt: k.createdAt.toISOString(),
+//       updatedAt: k.updatedAt.toISOString(),
+//     }));
+//   }
+//
+//   static async createKeyword(data: CreateKeywordInput, log: Logger) {
+//     const questionId = BigInt(data.questionId);
+//     log.debug(
+//       { questionId: questionId.toString(), blankOrder: data.blankOrder },
+//       "Creating new keyword",
+//     );
+//
+//     const keyword = await prisma.questionKeyword.create({
+//       data: {
+//         questionId,
+//         blankOrder: data.blankOrder,
+//         correctAnswer: data.correctAnswer,
+//       },
+//       select: SAFE_KEYWORD_SELECT,
+//     });
+//
+//     log.info(
+//       { keywordId: keyword.id.toString(), blankOrder: keyword.blankOrder },
+//       "Keyword created successfully",
+//     );
+//
+//     return {
+//       id: keyword.id.toString(),
+//       questionId: keyword.questionId.toString(),
+//       quizId: keyword.question.quiz.id.toString(),
+//       quizTitle: keyword.question.quiz.title,
+//       blankOrder: keyword.blankOrder,
+//       correctAnswer: keyword.correctAnswer,
+//       createdAt: keyword.createdAt.toISOString(),
+//       updatedAt: keyword.updatedAt.toISOString(),
+//     };
+//   }
+//
+//   static async updateKeyword(
+//     keywordId: bigint,
+//     data: UpdateKeywordInput,
+//     log: Logger,
+//   ) {
+//     log.debug({ keywordId: keywordId.toString() }, "Updating keyword");
+//
+//     const keyword = await prisma.questionKeyword.update({
+//       where: { id: keywordId },
+//       data: {
+//         blankOrder: data.blankOrder,
+//         correctAnswer: data.correctAnswer,
+//       },
+//       select: SAFE_KEYWORD_SELECT,
+//     });
+//
+//     log.info(
+//       { keywordId: keyword.id.toString() },
+//       "Keyword updated successfully",
+//     );
+//
+//     return {
+//       id: keyword.id.toString(),
+//       questionId: keyword.questionId.toString(),
+//       quizId: keyword.question.quiz.id.toString(),
+//       quizTitle: keyword.question.quiz.title,
+//       blankOrder: keyword.blankOrder,
+//       correctAnswer: keyword.correctAnswer,
+//       createdAt: keyword.createdAt.toISOString(),
+//       updatedAt: keyword.updatedAt.toISOString(),
+//     };
+//   }
+//
+//   static async deleteKeyword(keywordId: bigint, log: Logger) {
+//     log.debug({ keywordId: keywordId.toString() }, "Deleting keyword");
+//
+//     const keyword = await prisma.questionKeyword.delete({
+//       where: { id: keywordId },
+//       select: { id: true },
+//     });
+//
+//     log.info(
+//       { keywordId: keyword.id.toString() },
+//       "Keyword deleted successfully",
+//     );
+//
+//     return {
+//       id: keyword.id.toString(),
+//     };
+//   }
+// }
 
 export const SAFE_LEVEL_SELECT = {
   id: true,
