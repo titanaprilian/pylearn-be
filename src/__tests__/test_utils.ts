@@ -6,6 +6,7 @@ export const TEST_USER_ID = "ckv9x3y9x0001qz1abcde1234";
 // Cleans the DB (Add other tables here)
 export async function resetDatabase() {
   await prisma.refreshToken.deleteMany();
+  await prisma.material.deleteMany();
   await prisma.user.deleteMany();
   await prisma.roleFeature.deleteMany();
   await prisma.role.deleteMany();
@@ -200,3 +201,20 @@ export const seedTestRoles = async () => {
 
 // Helper to generate a random IP for each test
 export const randomIp = () => `10.0.0.${Math.floor(Math.random() * 254) + 1}`;
+
+export const defaultMaterialData = (lecturerId: string) => ({
+  lecturerId,
+  title: "Test Material",
+  description: "Test description",
+  materialType: "text",
+  content: "Test content here",
+  isPublished: false,
+});
+
+export async function createTestMaterial(
+  lecturerId: string,
+  overrides: any = {},
+) {
+  const data = { ...defaultMaterialData(lecturerId), ...overrides };
+  return await prisma.material.create({ data });
+}
