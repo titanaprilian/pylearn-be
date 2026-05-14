@@ -82,6 +82,7 @@ model QuizQuestion {
   quizId        BigInt
   quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
   questionText  String   @db.Text
+  answerText    String   @db.Text
   maxScore      Int      @default(100)
   questionOrder Int
   createdAt     DateTime @default(now())

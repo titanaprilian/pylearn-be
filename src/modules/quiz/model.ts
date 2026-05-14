@@ -37,6 +37,7 @@ export const QuizQuestionSafe = z.object({
   quizId: z.string(),
   quizTitle: z.string().optional(),
   questionText: z.string(),
+  answerText: z.string(),
   maxScore: z.number(),
   questionOrder: z.number(),
   createdAt: z.string().datetime(),
