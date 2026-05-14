@@ -1,11 +1,9 @@
 import { prisma } from "@/libs/prisma";
-import type {
-  CreateMaterialInput,
-  CreateMaterialMeInput,
-  UpdateMaterialInput,
-} from "./schema";
+import type { CreateMaterialInput, UpdateMaterialInput } from "./schema";
 import { Prisma } from "@generated/prisma";
 import type { Logger } from "pino";
+import { join } from "path";
+import { mkdir } from "fs/promises";
 
 export const SAFE_MATERIAL_SELECT = {
   id: true,
@@ -147,12 +145,53 @@ export abstract class MaterialService {
     };
   }
 
-  static async createMaterialMe(
-    data: CreateMaterialMeInput,
-    lecturerId: string,
-    log: Logger,
-  ) {
-    return this.createMaterial({ ...data, lecturerId }, log);
+  static async createMaterialMe(data: any, lecturerId: string, log: Logger) {
+    let filePath: string | null = null;
+
+    if (data.file instanceof File) {
+      log.debug("Processing uploaded PDF file...");
+
+      const uploadDir = join(process.cwd(), "storage", "materials");
+      await mkdir(uploadDir, { recursive: true });
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const fileName = `${uniqueSuffix}-${data.file.name.replace(/\s+/g, "_")}`;
+      const fullPath = join(uploadDir, fileName);
+
+      const bytesWritten = await Bun.write(fullPath, data.file);
+      log.debug(
+        { bytesWritten, path: fullPath },
+        "File saved to local storage",
+      );
+
+      filePath = `/storage/materials/${fileName}`;
+    }
+
+    const material = await prisma.material.create({
+      data: {
+        title: data.title,
+        materialType: data.materialType,
+        lecturerId: lecturerId,
+        content: filePath ?? data.content ?? null,
+        publishedAt:
+          data.isPublished === "true" || data.isPublished === true
+            ? new Date()
+            : null,
+      },
+      select: SAFE_MATERIAL_SELECT,
+    });
+
+    log.info(
+      { materialId: material.id.toString(), title: material.title },
+      "Material with attachment created successfully",
+    );
+
+    return {
+      ...material,
+      id: material.id.toString(),
+      createdAt: material.createdAt.toISOString(),
+      updatedAt: material.updatedAt.toISOString(),
+      publishedAt: material.publishedAt?.toISOString() ?? null,
+    };
   }
 
   static async updateMaterial(

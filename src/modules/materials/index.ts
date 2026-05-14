@@ -84,6 +84,7 @@ const protectedMaterials = createProtectedApp()
     "/me",
     async ({ body, user, set, log, locale }) => {
       const data = await MaterialService.createMaterialMe(body, user.id, log);
+
       return successResponse(
         set,
         data,
@@ -95,6 +96,7 @@ const protectedMaterials = createProtectedApp()
     },
     {
       body: CreateMaterialMeSchema,
+      type: "multipart/form-data",
       response: {
         201: MaterialModel.createMeResult,
         400: MaterialModel.validationError,

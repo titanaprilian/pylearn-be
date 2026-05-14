@@ -7,11 +7,32 @@ export const CreateMaterialSchema = z.object({
   lecturerId: z.string(),
   title: z.string().min(1).max(200),
   description: z.string().max(1000).optional(),
-  materialType: MaterialTypeEnum,
+  materialType: z.enum(["text", "file", "video", "link"], {
+    errorMap: () => ({
+      message: 'Must be one of "text", "file", "video", or "link"',
+    }),
+  }),
   content: z.string().optional(),
   sourceUrl: z.string().url().optional(),
   iconName: z.string().max(50).optional(),
-  isPublished: z.boolean().default(false),
+  isPublished: z
+    .preprocess((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return val;
+    }, z.boolean())
+    .optional(),
+  file: z
+    .instanceof(File)
+    .refine(
+      (file) => file.type === "application/pdf",
+      "Only PDF files are allowed",
+    )
+    .refine(
+      (file) => file.size <= 10 * 1024 * 1024,
+      "File size must be less than 10MB",
+    )
+    .optional(),
 });
 
 export const CreateMaterialMeSchema = CreateMaterialSchema.omit({

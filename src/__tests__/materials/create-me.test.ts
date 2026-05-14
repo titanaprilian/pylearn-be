@@ -51,6 +51,45 @@ describe("POST /materials/me", () => {
     expect(body.data.lecturerId).toBe(user.id);
   });
 
+  it("should upload a material PDF successfully", async () => {
+    const role = await createTestRoleWithPermissions("CreatorRoleMe", [
+      { featureName: "material_management", action: "create" },
+    ]);
+    const { authHeaders } = await createAuthenticatedUser({
+      roleId: role.id,
+    });
+
+    const formData = new FormData();
+    formData.append("title", "Lecture Notes PDF");
+    formData.append("materialType", "file");
+    formData.append("isPublished", "true");
+
+    const mockPdfFile = new File(
+      [new Uint8Array([1, 2, 3, 4])],
+      "lecture_notes.pdf",
+      {
+        type: "application/pdf",
+      },
+    );
+    formData.append("file", mockPdfFile);
+
+    const { "content-type": _, ...headersWithoutContentType } = authHeaders;
+    const res = await app.handle(
+      new Request("http://localhost/materials/me", {
+        method: "POST",
+        headers: {
+          ...headersWithoutContentType,
+        },
+        body: formData,
+      }),
+    );
+
+    const json = await res.json();
+    expect(res.status).toBe(201);
+    expect(json.data.title).toBe("Lecture Notes PDF");
+    expect(json.data.content).toContain("/storage/materials/");
+  });
+
   it("should return 400 if required fields are missing", async () => {
     const role = await createTestRoleWithPermissions("CreatorRoleMeMissing", [
       { featureName: "material_management", action: "create" },
