@@ -1,7 +1,12 @@
 import { prisma } from "@/libs/prisma";
-import type { CreateQuizInput, UpdateQuizInput } from "./schema";
+import type {
+  CreateQuizInput,
+  UpdateQuizInput,
+  CreateQuizQuestionInput,
+  UpdateQuizQuestionInput,
+} from "./schema";
 import type { Logger } from "pino";
-import { InvalidTimeRangeError } from "./error";
+import { InvalidTimeRangeError, CannotDeleteQuestionError } from "./error";
 
 export const SAFE_QUIZ_SELECT = {
   id: true,
@@ -246,6 +251,175 @@ export abstract class QuizService {
 
     return {
       id: quiz.id.toString(),
+    };
+  }
+}
+
+export const SAFE_QUESTION_SELECT = {
+  id: true,
+  quizId: true,
+  questionText: true,
+  maxScore: true,
+  questionOrder: true,
+  createdAt: true,
+  updatedAt: true,
+  quiz: {
+    select: {
+      title: true,
+    },
+  },
+} as const;
+
+export abstract class QuizQuestionService {
+  static async getQuestions(quizId: bigint, log: Logger) {
+    log.debug({ quizId: quizId.toString() }, "Fetching questions for quiz");
+
+    const questions = await prisma.quizQuestion.findMany({
+      where: { quizId },
+      select: SAFE_QUESTION_SELECT,
+      orderBy: { questionOrder: "asc" },
+    });
+
+    log.info(
+      { quizId: quizId.toString(), count: questions.length },
+      "Questions retrieved successfully",
+    );
+
+    return questions.map((q) => ({
+      id: q.id.toString(),
+      quizId: q.quizId.toString(),
+      quizTitle: q.quiz.title,
+      questionText: q.questionText,
+      maxScore: q.maxScore,
+      questionOrder: q.questionOrder,
+      createdAt: q.createdAt.toISOString(),
+      updatedAt: q.updatedAt.toISOString(),
+    }));
+  }
+
+  static async createQuestion(
+    quizId: bigint,
+    data: CreateQuizQuestionInput,
+    log: Logger,
+  ) {
+    log.debug(
+      { quizId: quizId.toString(), questionText: data.questionText },
+      "Creating new quiz question",
+    );
+
+    const maxOrder = await prisma.quizQuestion.aggregate({
+      where: { quizId },
+      _max: { questionOrder: true },
+    });
+
+    const newOrder = (maxOrder._max.questionOrder ?? 0) + 1;
+
+    const question = await prisma.quizQuestion.create({
+      data: {
+        quizId,
+        questionText: data.questionText,
+        maxScore: data.maxScore ?? 100,
+        questionOrder: newOrder,
+      },
+      select: SAFE_QUESTION_SELECT,
+    });
+
+    log.info(
+      {
+        quizId: quizId.toString(),
+        questionId: question.id.toString(),
+        order: newOrder,
+      },
+      "Quiz question created successfully",
+    );
+
+    return {
+      id: question.id.toString(),
+      quizId: question.quizId.toString(),
+      quizTitle: question.quiz.title,
+      questionText: question.questionText,
+      maxScore: question.maxScore,
+      questionOrder: question.questionOrder,
+      createdAt: question.createdAt.toISOString(),
+      updatedAt: question.updatedAt.toISOString(),
+    };
+  }
+
+  static async updateQuestion(
+    quizId: bigint,
+    questionId: bigint,
+    data: UpdateQuizQuestionInput,
+    log: Logger,
+  ) {
+    log.debug(
+      { quizId: quizId.toString(), questionId: questionId.toString() },
+      "Updating quiz question",
+    );
+
+    const question = await prisma.quizQuestion.update({
+      where: { id: questionId, quizId },
+      data: {
+        questionText: data.questionText,
+        maxScore: data.maxScore,
+      },
+      select: SAFE_QUESTION_SELECT,
+    });
+
+    log.info(
+      { questionId: question.id.toString() },
+      "Quiz question updated successfully",
+    );
+
+    return {
+      id: question.id.toString(),
+      quizId: question.quizId.toString(),
+      quizTitle: question.quiz.title,
+      questionText: question.questionText,
+      maxScore: question.maxScore,
+      questionOrder: question.questionOrder,
+      createdAt: question.createdAt.toISOString(),
+      updatedAt: question.updatedAt.toISOString(),
+    };
+  }
+
+  static async deleteQuestion(quizId: bigint, questionId: bigint, log: Logger) {
+    log.debug(
+      { quizId: quizId.toString(), questionId: questionId.toString() },
+      "Deleting quiz question",
+    );
+
+    const question = await prisma.quizQuestion.findFirst({
+      where: { id: questionId, quizId },
+      select: { questionOrder: true },
+    });
+
+    if (!question) {
+      throw new Prisma.PrismaClientKnownRequestError("Question not found", {
+        code: "P2025",
+        clientVersion: "6.5.0",
+      });
+    }
+
+    const maxOrder = await prisma.quizQuestion.aggregate({
+      where: { quizId },
+      _max: { questionOrder: true },
+    });
+
+    if (question.questionOrder !== maxOrder._max.questionOrder) {
+      throw new CannotDeleteQuestionError();
+    }
+
+    await prisma.quizQuestion.delete({
+      where: { id: questionId },
+    });
+
+    log.info(
+      { questionId: questionId.toString() },
+      "Quiz question deleted successfully",
+    );
+
+    return {
+      id: questionId.toString(),
     };
   }
 }
