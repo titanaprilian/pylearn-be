@@ -33,8 +33,11 @@ export const SAFE_QUIZ_SELECT = {
   levels: {
     select: {
       id: true,
+      quizId: true,
       title: true,
       levelOrder: true,
+      createdAt: true,
+      updatedAt: true,
     },
     orderBy: {
       levelOrder: "asc",
@@ -71,6 +74,14 @@ export abstract class QuizService {
       isPublished: quiz.isPublished,
       createdAt: quiz.createdAt.toISOString(),
       updatedAt: quiz.updatedAt.toISOString(),
+      levels: quiz.levels.map((level) => ({
+        id: level.id.toString(),
+        quizId: level.quizId.toString(),
+        title: level.title,
+        levelOrder: level.levelOrder,
+        createdAt: level.createdAt.toISOString(),
+        updatedAt: level.updatedAt.toISOString(),
+      })),
     }));
   }
 
@@ -138,7 +149,7 @@ export abstract class QuizService {
       },
       select: {
         id: true,
-        materialId: true, // Updated selection
+        materialId: true,
         title: true,
         description: true,
         startTime: true,
@@ -146,6 +157,19 @@ export abstract class QuizService {
         isPublished: true,
         createdAt: true,
         updatedAt: true,
+        levels: {
+          select: {
+            id: true,
+            quizId: true,
+            title: true,
+            levelOrder: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          orderBy: {
+            levelOrder: "asc",
+          },
+        },
       },
     });
 
@@ -164,6 +188,14 @@ export abstract class QuizService {
       isPublished: quiz.isPublished,
       createdAt: quiz.createdAt.toISOString(),
       updatedAt: quiz.updatedAt.toISOString(),
+      levels: quiz.levels.map((level) => ({
+        id: level.id.toString(),
+        quizId: level.quizId.toString(),
+        title: level.title,
+        levelOrder: level.levelOrder,
+        createdAt: level.createdAt.toISOString(),
+        updatedAt: level.updatedAt.toISOString(),
+      })),
     };
   }
 
