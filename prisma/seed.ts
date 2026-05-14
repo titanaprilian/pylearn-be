@@ -33,10 +33,12 @@ const ROLE_PERMISSIONS: Record<
     // SuperAdmin gets everything (we will handle this logically in the loop, or explicit here)
     user_management: { c: true, r: true, u: true, d: true, p: true },
     RBAC_management: { c: true, r: true, u: true, d: true, p: true },
+    material_management: { c: true, r: true, u: true, d: true, p: true },
   },
   Staff: {
     user_management: { c: false, r: false, u: false, d: false, p: false },
     RBAC_management: { c: false, r: false, u: false, d: false, p: false },
+    material_management: { c: false, r: true, u: false, d: false, p: false },
   },
 };
 
