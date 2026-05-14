@@ -74,6 +74,16 @@ A production-ready authentication service with Role-Based Access Control (RBAC).
         description:
           "Dashboard statistics - View system overview (total users, roles, features, user distribution). Accessible to all authenticated users.",
       },
+      {
+        name: "Materials",
+        description:
+          "Material management - Create, read, update, delete materials and their levels. Requires material_management permission.",
+      },
+      {
+        name: "Quizzes",
+        description:
+          "Quiz management - Manage quizzes, questions, and keywords. Requires quiz_management permission.",
+      },
     ],
 
     components: {

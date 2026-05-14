@@ -66,7 +66,7 @@ describe("Question Keywords API", () => {
     await prisma.$disconnect();
   });
 
-  describe("POST /keywords", () => {
+  describe("POST /quizzes/keywords", () => {
     it("should create a keyword", async () => {
       const question = await prisma.quizQuestion.create({
         data: {
@@ -78,7 +78,7 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
-        new Request("http://localhost/keywords", {
+        new Request("http://localhost/quizzes/keywords", {
           method: "POST",
           headers: {
             ...authHeaders,
@@ -119,7 +119,7 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
-        new Request("http://localhost/keywords", {
+        new Request("http://localhost/quizzes/keywords", {
           method: "POST",
           headers: {
             ...authHeaders,
@@ -156,7 +156,7 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
-        new Request("http://localhost/keywords", {
+        new Request("http://localhost/quizzes/keywords", {
           method: "POST",
           headers: {
             ...readOnlyAuth.authHeaders,
@@ -174,7 +174,7 @@ describe("Question Keywords API", () => {
     });
   });
 
-  describe("GET /keywords", () => {
+  describe("GET /quizzes/keywords", () => {
     it("should list keywords with quiz info", async () => {
       const question = await prisma.quizQuestion.create({
         data: {
@@ -203,7 +203,7 @@ describe("Question Keywords API", () => {
       const res = await app.handle(
         // Query param used for fetching list based on questionId
         new Request(
-          `http://localhost/keywords?questionId=${question.id.toString()}`,
+          `http://localhost/quizzes/keywords?questionId=${question.id.toString()}`,
           {
             method: "GET",
             headers: authHeaders,
@@ -232,7 +232,7 @@ describe("Question Keywords API", () => {
 
       const res = await app.handle(
         new Request(
-          `http://localhost/keywords?questionId=${question.id.toString()}`,
+          `http://localhost/quizzes/keywords?questionId=${question.id.toString()}`,
           {
             method: "GET",
             headers: authHeaders,
@@ -246,7 +246,7 @@ describe("Question Keywords API", () => {
     });
   });
 
-  describe("PATCH /keywords/:id", () => {
+  describe("PATCH /quizzes/keywords/:id", () => {
     it("should update a keyword", async () => {
       const question = await prisma.quizQuestion.create({
         data: {
@@ -266,17 +266,20 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
-        new Request(`http://localhost/keywords/${keyword.id.toString()}`, {
-          method: "PATCH",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
+        new Request(
+          `http://localhost/quizzes/keywords/${keyword.id.toString()}`,
+          {
+            method: "PATCH",
+            headers: {
+              ...authHeaders,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              blankOrder: 2,
+              correctAnswer: "updated",
+            }),
           },
-          body: JSON.stringify({
-            blankOrder: 2,
-            correctAnswer: "updated",
-          }),
-        }),
+        ),
       );
 
       expect(res.status).toBe(200);
@@ -287,7 +290,7 @@ describe("Question Keywords API", () => {
 
     it("should return 404 for non-existent keyword", async () => {
       const res = await app.handle(
-        new Request(`http://localhost/keywords/999999`, {
+        new Request(`http://localhost/quizzes/keywords/999999`, {
           method: "PATCH",
           headers: {
             ...authHeaders,
@@ -301,7 +304,7 @@ describe("Question Keywords API", () => {
     });
   });
 
-  describe("DELETE /keywords/:id", () => {
+  describe("DELETE /quizzes/keywords/:id", () => {
     it("should delete a keyword", async () => {
       const question = await prisma.quizQuestion.create({
         data: {
@@ -321,10 +324,13 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
-        new Request(`http://localhost/keywords/${keyword.id.toString()}`, {
-          method: "DELETE",
-          headers: authHeaders,
-        }),
+        new Request(
+          `http://localhost/quizzes/keywords/${keyword.id.toString()}`,
+          {
+            method: "DELETE",
+            headers: authHeaders,
+          },
+        ),
       );
 
       expect(res.status).toBe(200);
@@ -337,7 +343,7 @@ describe("Question Keywords API", () => {
 
     it("should return 404 for non-existent keyword", async () => {
       const res = await app.handle(
-        new Request(`http://localhost/keywords/999999`, {
+        new Request(`http://localhost/quizzes/keywords/999999`, {
           method: "DELETE",
           headers: authHeaders,
         }),
@@ -374,10 +380,13 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
-        new Request(`http://localhost/keywords/${keyword.id.toString()}`, {
-          method: "DELETE",
-          headers: readOnlyAuth.authHeaders,
-        }),
+        new Request(
+          `http://localhost/quizzes/keywords/${keyword.id.toString()}`,
+          {
+            method: "DELETE",
+            headers: readOnlyAuth.authHeaders,
+          },
+        ),
       );
 
       expect(res.status).toBe(403);

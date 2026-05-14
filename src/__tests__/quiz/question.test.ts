@@ -75,11 +75,11 @@ describe("Quiz Questions API", () => {
     await prisma.$disconnect();
   });
 
-  describe("POST /questions", () => {
+  describe("POST /quizzes/questions", () => {
     it("should create questions with sequential order", async () => {
       // First question
       const res1 = await app.handle(
-        new Request("http://localhost/questions", {
+        new Request("http://localhost/quizzes/questions", {
           method: "POST",
           headers: {
             ...authHeaders,
@@ -102,7 +102,7 @@ describe("Quiz Questions API", () => {
 
       // Second question
       const res2 = await app.handle(
-        new Request("http://localhost/questions", {
+        new Request("http://localhost/quizzes/questions", {
           method: "POST",
           headers: {
             ...authHeaders,
@@ -123,7 +123,7 @@ describe("Quiz Questions API", () => {
     });
   });
 
-  describe("GET /questions", () => {
+  describe("GET /quizzes/questions", () => {
     it("should list questions with quiz title", async () => {
       await prisma.quizQuestion.create({
         data: {
@@ -135,7 +135,7 @@ describe("Quiz Questions API", () => {
       });
 
       const res = await app.handle(
-        new Request(`http://localhost/questions?quizId=${quizId}`, {
+        new Request(`http://localhost/quizzes/questions?quizId=${quizId}`, {
           method: "GET",
           headers: authHeaders,
         }),
@@ -150,7 +150,7 @@ describe("Quiz Questions API", () => {
     });
   });
 
-  describe("PATCH /questions/:id", () => {
+  describe("PATCH /quizzes/questions/:id", () => {
     it("should update question text and max score", async () => {
       const q = await prisma.quizQuestion.create({
         data: {
@@ -163,7 +163,7 @@ describe("Quiz Questions API", () => {
       });
 
       const res = await app.handle(
-        new Request(`http://localhost/questions/${q.id.toString()}`, {
+        new Request(`http://localhost/quizzes/questions/${q.id.toString()}`, {
           method: "PATCH",
           headers: {
             ...authHeaders,
@@ -185,7 +185,7 @@ describe("Quiz Questions API", () => {
     });
   });
 
-  describe("DELETE /questions/:id", () => {
+  describe("DELETE /quizzes/questions/:id", () => {
     it("should allow deletion if not the last question", async () => {
       const q1 = await prisma.quizQuestion.create({
         data: {
@@ -205,7 +205,7 @@ describe("Quiz Questions API", () => {
       });
 
       const res = await app.handle(
-        new Request(`http://localhost/questions/${q1.id.toString()}`, {
+        new Request(`http://localhost/quizzes/questions/${q1.id.toString()}`, {
           method: "DELETE",
           headers: authHeaders,
         }),
@@ -225,7 +225,7 @@ describe("Quiz Questions API", () => {
       });
 
       const res = await app.handle(
-        new Request(`http://localhost/questions/${q1.id.toString()}`, {
+        new Request(`http://localhost/quizzes/questions/${q1.id.toString()}`, {
           method: "DELETE",
           headers: authHeaders,
         }),

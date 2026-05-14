@@ -30,7 +30,7 @@ const FEATURE_NAME = "quiz_management";
 const protectedQuizzes = createProtectedApp()
   // Quizzes
   .get(
-    "/quizzes",
+    "/",
     async ({ query, set, log, locale }) => {
       const levelId = BigInt(query.levelId);
       const quizzes = await QuizService.getQuizzes(levelId, log);
@@ -53,7 +53,7 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .post(
-    "/quizzes",
+    "/",
     async ({ body, set, log, locale }) => {
       const quiz = await QuizService.createQuiz(body, log);
       return successResponse(
@@ -76,7 +76,7 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .get(
-    "/quizzes/:id",
+    "/:id",
     async ({ params, set, log, locale }) => {
       const quizId = BigInt(params.id);
       const quiz = await QuizService.getQuiz(quizId, log);
@@ -100,7 +100,7 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .patch(
-    "/quizzes/:id",
+    "/:id",
     async ({ params, body, set, log, locale }) => {
       const quizId = BigInt(params.id);
       const quiz = await QuizService.updateQuiz(quizId, body, log);
@@ -126,7 +126,7 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .delete(
-    "/quizzes/:id",
+    "/:id",
     async ({ params, set, log, locale }) => {
       const quizId = BigInt(params.id);
       const result = await QuizService.deleteQuiz(quizId, log);
@@ -420,6 +420,7 @@ const protectedQuizzes = createProtectedApp()
     );
   });
 
-export const quizzes = createBaseApp({ tags: ["Quizzes"] }).use(
-  protectedQuizzes,
+export const quizzes = createBaseApp({ tags: ["Quizzes"] }).group(
+  "/quizzes",
+  (app) => app.use(protectedQuizzes),
 );
