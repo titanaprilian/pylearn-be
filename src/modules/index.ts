@@ -4,3 +4,4 @@ export { user } from "./user";
 export { rbac } from "./rbac";
 export { dashboard } from "./dashboard";
 export { materials } from "./materials";
+export { quizzes } from "./quiz";

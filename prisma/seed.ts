@@ -8,6 +8,7 @@ const FEATURES = [
   { name: "user_management", description: "Manage system users" },
   { name: "RBAC_management", description: "Manage roles and permissions" },
   { name: "material_management", description: "Manage material" },
+  { name: "quiz_management", description: "Manage quizzes" },
 ] as const;
 
 const ROLES = [
@@ -35,11 +36,13 @@ const ROLE_PERMISSIONS: Record<
     user_management: { c: true, r: true, u: true, d: true, p: true },
     RBAC_management: { c: true, r: true, u: true, d: true, p: true },
     material_management: { c: true, r: true, u: true, d: true, p: true },
+    quiz_management: { c: true, r: true, u: true, d: true, p: true },
   },
   Staff: {
     user_management: { c: false, r: false, u: false, d: false, p: false },
     RBAC_management: { c: false, r: false, u: false, d: false, p: false },
     material_management: { c: false, r: true, u: false, d: false, p: false },
+    quiz_management: { c: false, r: true, u: false, d: false, p: false },
   },
 };
 
