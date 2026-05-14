@@ -6,6 +6,7 @@ export const TEST_USER_ID = "ckv9x3y9x0001qz1abcde1234";
 // Cleans the DB (Add other tables here)
 export async function resetDatabase() {
   await prisma.refreshToken.deleteMany();
+  await prisma.materialLevel.deleteMany();
   await prisma.material.deleteMany();
   await prisma.user.deleteMany();
   await prisma.roleFeature.deleteMany();
@@ -116,19 +117,38 @@ export async function createTestRoleWithPermissions(
     },
   });
 
-  await prisma.roleFeature.deleteMany({
-    where: { roleId: role.id },
-  });
+  await prisma.$transaction([
+    prisma.roleFeature.deleteMany({
+      where: { roleId: role.id },
+    }),
+  ]);
 
-  const permissionsData = permissions.map((p) => ({
-    roleId: role.id,
-    featureId: featureMap.get(p.featureName),
-    [`can${p.action.charAt(0).toUpperCase() + p.action.slice(1)}`]: true,
-  }));
+  const permissionsByFeature = new Map<string, typeof permissions>();
+  for (const p of permissions) {
+    if (!permissionsByFeature.has(p.featureName)) {
+      permissionsByFeature.set(p.featureName, []);
+    }
+    permissionsByFeature.get(p.featureName)!.push(p);
+  }
 
-  if (permissionsData.length > 0) {
-    await prisma.roleFeature.createMany({
-      data: permissionsData as any,
+  for (const [, perms] of permissionsByFeature) {
+    const featureId = featureMap.get(perms[0].featureName)!;
+    const canCreate = perms.some((p) => p.action === "create");
+    const canRead = perms.some((p) => p.action === "read");
+    const canUpdate = perms.some((p) => p.action === "update");
+    const canDelete = perms.some((p) => p.action === "delete");
+    const canPrint = perms.some((p) => p.action === "print");
+
+    await prisma.roleFeature.create({
+      data: {
+        roleId: role.id,
+        featureId,
+        canCreate,
+        canRead,
+        canUpdate,
+        canDelete,
+        canPrint,
+      },
     });
   }
 
