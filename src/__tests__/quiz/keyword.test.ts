@@ -9,11 +9,7 @@ import {
 
 describe("Question Keywords API", () => {
   let authHeaders: any;
-  let materialId: string;
-  let levelId: string;
   let quizId: string;
-  const baseUrl = (mId: string, lId: string, qId: string, questionId: string) =>
-    `http://localhost/materials/${mId}/levels/${lId}/quizzes/${qId}/questions/${questionId}/keywords`;
 
   beforeEach(async () => {
     await resetDatabase();
@@ -30,6 +26,7 @@ describe("Question Keywords API", () => {
     const auth = await createAuthenticatedUser({ roleId: role.id });
     authHeaders = auth.authHeaders;
 
+    // Setup hierarchy to get a valid quizId
     const mResponse = await app.handle(
       new Request("http://localhost/materials", {
         method: "POST",
@@ -42,7 +39,7 @@ describe("Question Keywords API", () => {
       }),
     );
     const mBody = await mResponse.json();
-    materialId = mBody.data.id;
+    const materialId = mBody.data.id;
 
     const lResponse = await app.handle(
       new Request(`http://localhost/materials/${materialId}/levels`, {
@@ -52,17 +49,14 @@ describe("Question Keywords API", () => {
       }),
     );
     const lBody = await lResponse.json();
-    levelId = lBody.data.id;
+    const levelId = lBody.data.id;
 
     const qResponse = await app.handle(
-      new Request(
-        `http://localhost/materials/${materialId}/levels/${levelId}/quizzes`,
-        {
-          method: "POST",
-          headers: authHeaders,
-          body: JSON.stringify({ title: "Quiz 1" }),
-        },
-      ),
+      new Request(`http://localhost/quizzes`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ title: "Quiz 1", levelId: levelId }),
+      }),
     );
     const qBody = await qResponse.json();
     quizId = qBody.data.id;
@@ -72,7 +66,7 @@ describe("Question Keywords API", () => {
     await prisma.$disconnect();
   });
 
-  describe("POST /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId/keywords", () => {
+  describe("POST /keywords", () => {
     it("should create a keyword", async () => {
       const question = await prisma.quizQuestion.create({
         data: {
@@ -84,17 +78,18 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
-        new Request(
-          baseUrl(materialId, levelId, quizId, question.id.toString()),
-          {
-            method: "POST",
-            headers: authHeaders,
-            body: JSON.stringify({
-              blankOrder: 1,
-              correctAnswer: "answer1",
-            }),
+        new Request("http://localhost/keywords", {
+          method: "POST",
+          headers: {
+            ...authHeaders,
+            "content-type": "application/json",
           },
-        ),
+          body: JSON.stringify({
+            questionId: question.id.toString(), // Added to body since it's no longer in the URL
+            blankOrder: 1,
+            correctAnswer: "answer1",
+          }),
+        }),
       );
 
       expect(res.status).toBe(201);
@@ -124,17 +119,18 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
-        new Request(
-          baseUrl(materialId, levelId, quizId, question.id.toString()),
-          {
-            method: "POST",
-            headers: authHeaders,
-            body: JSON.stringify({
-              blankOrder: 1,
-              correctAnswer: "duplicate",
-            }),
+        new Request("http://localhost/keywords", {
+          method: "POST",
+          headers: {
+            ...authHeaders,
+            "content-type": "application/json",
           },
-        ),
+          body: JSON.stringify({
+            questionId: question.id.toString(),
+            blankOrder: 1,
+            correctAnswer: "duplicate",
+          }),
+        }),
       );
 
       expect(res.status).toBe(400);
@@ -160,24 +156,25 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
-        new Request(
-          baseUrl(materialId, levelId, quizId, question.id.toString()),
-          {
-            method: "POST",
-            headers: readOnlyAuth.authHeaders,
-            body: JSON.stringify({
-              blankOrder: 1,
-              correctAnswer: "test",
-            }),
+        new Request("http://localhost/keywords", {
+          method: "POST",
+          headers: {
+            ...readOnlyAuth.authHeaders,
+            "content-type": "application/json",
           },
-        ),
+          body: JSON.stringify({
+            questionId: question.id.toString(),
+            blankOrder: 1,
+            correctAnswer: "test",
+          }),
+        }),
       );
 
       expect(res.status).toBe(403);
     });
   });
 
-  describe("GET /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId/keywords", () => {
+  describe("GET /keywords", () => {
     it("should list keywords with quiz info", async () => {
       const question = await prisma.quizQuestion.create({
         data: {
@@ -204,8 +201,9 @@ describe("Question Keywords API", () => {
       });
 
       const res = await app.handle(
+        // Query param used for fetching list based on questionId
         new Request(
-          baseUrl(materialId, levelId, quizId, question.id.toString()),
+          `http://localhost/keywords?questionId=${question.id.toString()}`,
           {
             method: "GET",
             headers: authHeaders,
@@ -234,7 +232,7 @@ describe("Question Keywords API", () => {
 
       const res = await app.handle(
         new Request(
-          baseUrl(materialId, levelId, quizId, question.id.toString()),
+          `http://localhost/keywords?questionId=${question.id.toString()}`,
           {
             method: "GET",
             headers: authHeaders,
@@ -248,7 +246,7 @@ describe("Question Keywords API", () => {
     });
   });
 
-  describe("PATCH /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId/keywords/:keywordId", () => {
+  describe("PATCH /keywords/:id", () => {
     it("should update a keyword", async () => {
       const question = await prisma.quizQuestion.create({
         data: {
@@ -267,11 +265,13 @@ describe("Question Keywords API", () => {
         },
       });
 
-      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
       const res = await app.handle(
-        new Request(`${url}/${keyword.id.toString()}`, {
+        new Request(`http://localhost/keywords/${keyword.id.toString()}`, {
           method: "PATCH",
-          headers: authHeaders,
+          headers: {
+            ...authHeaders,
+            "content-type": "application/json",
+          },
           body: JSON.stringify({
             blankOrder: 2,
             correctAnswer: "updated",
@@ -286,20 +286,13 @@ describe("Question Keywords API", () => {
     });
 
     it("should return 404 for non-existent keyword", async () => {
-      const question = await prisma.quizQuestion.create({
-        data: {
-          quizId: BigInt(quizId),
-          questionText: "Fill in the blank",
-          answerText: "Test answer",
-          questionOrder: 1,
-        },
-      });
-
-      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
       const res = await app.handle(
-        new Request(`${url}/999999`, {
+        new Request(`http://localhost/keywords/999999`, {
           method: "PATCH",
-          headers: authHeaders,
+          headers: {
+            ...authHeaders,
+            "content-type": "application/json",
+          },
           body: JSON.stringify({ correctAnswer: "updated" }),
         }),
       );
@@ -308,7 +301,7 @@ describe("Question Keywords API", () => {
     });
   });
 
-  describe("DELETE /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId/keywords/:keywordId", () => {
+  describe("DELETE /keywords/:id", () => {
     it("should delete a keyword", async () => {
       const question = await prisma.quizQuestion.create({
         data: {
@@ -327,9 +320,8 @@ describe("Question Keywords API", () => {
         },
       });
 
-      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
       const res = await app.handle(
-        new Request(`${url}/${keyword.id.toString()}`, {
+        new Request(`http://localhost/keywords/${keyword.id.toString()}`, {
           method: "DELETE",
           headers: authHeaders,
         }),
@@ -344,18 +336,8 @@ describe("Question Keywords API", () => {
     });
 
     it("should return 404 for non-existent keyword", async () => {
-      const question = await prisma.quizQuestion.create({
-        data: {
-          quizId: BigInt(quizId),
-          questionText: "Fill in the blank",
-          answerText: "Test answer",
-          questionOrder: 1,
-        },
-      });
-
-      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
       const res = await app.handle(
-        new Request(`${url}/999999`, {
+        new Request(`http://localhost/keywords/999999`, {
           method: "DELETE",
           headers: authHeaders,
         }),
@@ -391,9 +373,8 @@ describe("Question Keywords API", () => {
         },
       });
 
-      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
       const res = await app.handle(
-        new Request(`${url}/${keyword.id.toString()}`, {
+        new Request(`http://localhost/keywords/${keyword.id.toString()}`, {
           method: "DELETE",
           headers: readOnlyAuth.authHeaders,
         }),

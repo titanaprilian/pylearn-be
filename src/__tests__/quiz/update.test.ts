@@ -9,7 +9,7 @@ import {
   randomIp,
 } from "../test_utils";
 
-describe("PATCH /materials/:id/levels/:levelId/quizzes/:quizId", () => {
+describe("PATCH /quizzes/:id", () => {
   beforeEach(async () => {
     await resetDatabase();
   });
@@ -36,18 +36,15 @@ describe("PATCH /materials/:id/levels/:levelId/quizzes/:quizId", () => {
     });
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes/${quiz.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
-            "x-forwarded-for": randomIp(),
-          },
-          body: JSON.stringify({ title: "Updated Title", isPublished: true }),
+      new Request(`http://localhost/quizzes/${quiz.id}`, {
+        method: "PATCH",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
+          "x-forwarded-for": randomIp(),
         },
-      ),
+        body: JSON.stringify({ title: "Updated Title", isPublished: true }),
+      }),
     );
 
     expect(res.status).toBe(200);
@@ -79,21 +76,18 @@ describe("PATCH /materials/:id/levels/:levelId/quizzes/:quizId", () => {
     });
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes/${quiz.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
-            "x-forwarded-for": randomIp(),
-          },
-          body: JSON.stringify({
-            startTime: "2025-01-03T00:00:00Z",
-            endTime: "2025-01-04T00:00:00Z",
-          }),
+      new Request(`http://localhost/quizzes/${quiz.id}`, {
+        method: "PATCH",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
+          "x-forwarded-for": randomIp(),
         },
-      ),
+        body: JSON.stringify({
+          startTime: "2025-01-03T00:00:00Z",
+          endTime: "2025-01-04T00:00:00Z",
+        }),
+      }),
     );
 
     expect(res.status).toBe(200);
@@ -125,54 +119,43 @@ describe("PATCH /materials/:id/levels/:levelId/quizzes/:quizId", () => {
     });
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes/${quiz.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
-            "x-forwarded-for": randomIp(),
-          },
-          body: JSON.stringify({
-            startTime: "2025-01-05T00:00:00Z",
-            endTime: "2025-01-01T00:00:00Z",
-          }),
+      new Request(`http://localhost/quizzes/${quiz.id}`, {
+        method: "PATCH",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
+          "x-forwarded-for": randomIp(),
         },
-      ),
+        body: JSON.stringify({
+          startTime: "2025-01-05T00:00:00Z",
+          endTime: "2025-01-01T00:00:00Z",
+        }),
+      }),
     );
 
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.message).toBe("startTime must be before endTime");
+    expect(json.message).toBe("Start time must be before end time");
   });
 
   it("should return 404 for non-existent quiz", async () => {
     const role = await createTestRoleWithPermissions("QuizUpdaterRole", [
       { featureName: "quiz_management", action: "update" },
     ]);
-    const { user, authHeaders } = await createAuthenticatedUser({
+    const { authHeaders } = await createAuthenticatedUser({
       roleId: role.id,
     });
 
-    const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
-
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes/999999`,
-        {
-          method: "PATCH",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
-            "x-forwarded-for": randomIp(),
-          },
-          body: JSON.stringify({ title: "Updated Title" }),
+      new Request(`http://localhost/quizzes/999999`, {
+        method: "PATCH",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
+          "x-forwarded-for": randomIp(),
         },
-      ),
+        body: JSON.stringify({ title: "Updated Title" }),
+      }),
     );
 
     expect(res.status).toBe(404);
@@ -199,18 +182,15 @@ describe("PATCH /materials/:id/levels/:levelId/quizzes/:quizId", () => {
     });
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes/${quiz.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
-            "x-forwarded-for": randomIp(),
-          },
-          body: JSON.stringify({ title: "Updated Title" }),
+      new Request(`http://localhost/quizzes/${quiz.id}`, {
+        method: "PATCH",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
+          "x-forwarded-for": randomIp(),
         },
-      ),
+        body: JSON.stringify({ title: "Updated Title" }),
+      }),
     );
 
     expect(res.status).toBe(403);

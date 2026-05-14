@@ -1,6 +1,11 @@
 import { z } from "zod";
 
+export const GetQuizzesQuerySchema = z.object({
+  levelId: z.string().describe("Required MaterialLevel ID"),
+});
+
 export const CreateQuizSchema = z.object({
+  levelId: z.string().min(1, "MaterialLevel ID is required"),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   startTime: z.string().datetime().optional(),
@@ -16,18 +21,16 @@ export const UpdateQuizSchema = z.object({
   isPublished: z.boolean().optional(),
 });
 
-export const QuizListParamSchema = z.object({
-  id: z.string(),
-  levelId: z.string(),
-});
-
 export const QuizParamSchema = z.object({
   id: z.string(),
-  levelId: z.string(),
-  quizId: z.string(),
+});
+
+export const GetQuestionsQuerySchema = z.object({
+  quizId: z.string().describe("Required Quiz ID"),
 });
 
 export const CreateQuizQuestionSchema = z.object({
+  quizId: z.string().min(1, "Quiz ID is required"),
   questionText: z.string().min(1, "Question text is required"),
   answerText: z.string().min(1, "Answer text is required"),
   maxScore: z.number().int().min(0).optional().default(100),
@@ -41,27 +44,18 @@ export const UpdateQuizQuestionSchema = z.object({
 
 export const QuestionParamSchema = z.object({
   id: z.string(),
-  levelId: z.string(),
-  quizId: z.string(),
-  questionId: z.string(),
 });
 
-export const KeywordParamSchema = z.object({
-  id: z.string(),
-  levelId: z.string(),
-  quizId: z.string(),
-  questionId: z.string(),
-  keywordId: z.string(),
+export const GetGroupedQuestionsQuerySchema = z.object({
+  materialId: z.string().min(1, "Material ID is required"),
 });
 
-export const KeywordListParamSchema = z.object({
-  id: z.string(),
-  levelId: z.string(),
-  quizId: z.string(),
-  questionId: z.string(),
+export const GetKeywordsQuerySchema = z.object({
+  questionId: z.string().describe("Required QuizQuestion ID"),
 });
 
 export const CreateKeywordSchema = z.object({
+  questionId: z.string().min(1, "Question ID is required"),
   blankOrder: z.number().int().min(0, "Blank order must be non-negative"),
   correctAnswer: z.string().min(1, "Correct answer is required"),
 });
@@ -69,6 +63,10 @@ export const CreateKeywordSchema = z.object({
 export const UpdateKeywordSchema = z.object({
   blankOrder: z.number().int().min(0).optional(),
   correctAnswer: z.string().min(1).optional(),
+});
+
+export const KeywordParamSchema = z.object({
+  id: z.string(),
 });
 
 export type CreateQuizInput = z.infer<typeof CreateQuizSchema>;

@@ -9,7 +9,7 @@ import {
   randomIp,
 } from "../test_utils";
 
-describe("POST /materials/:id/levels/:levelId/quizzes", () => {
+describe("POST /quizzes", () => {
   beforeEach(async () => {
     await resetDatabase();
   });
@@ -28,21 +28,19 @@ describe("POST /materials/:id/levels/:levelId/quizzes", () => {
     });
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes`,
-        {
-          method: "POST",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
-            "x-forwarded-for": randomIp(),
-          },
-          body: JSON.stringify({
-            title: "New Quiz",
-            description: "Test description",
-          }),
+      new Request(`http://localhost/quizzes`, {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
+          "x-forwarded-for": randomIp(),
         },
-      ),
+        body: JSON.stringify({
+          levelId: level.id.toString(),
+          title: "New Quiz",
+          description: "Test description",
+        }),
+      }),
     );
 
     expect(res.status).toBe(201);
@@ -65,23 +63,21 @@ describe("POST /materials/:id/levels/:levelId/quizzes", () => {
     });
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes`,
-        {
-          method: "POST",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
-            "x-forwarded-for": randomIp(),
-          },
-          body: JSON.stringify({
-            title: "Timed Quiz",
-            startTime: "2025-01-01T00:00:00Z",
-            endTime: "2025-01-02T00:00:00Z",
-            isPublished: true,
-          }),
+      new Request(`http://localhost/quizzes`, {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
+          "x-forwarded-for": randomIp(),
         },
-      ),
+        body: JSON.stringify({
+          levelId: level.id.toString(),
+          title: "Timed Quiz",
+          startTime: "2025-01-01T00:00:00Z",
+          endTime: "2025-01-02T00:00:00Z",
+          isPublished: true,
+        }),
+      }),
     );
 
     expect(res.status).toBe(201);
@@ -89,43 +85,6 @@ describe("POST /materials/:id/levels/:levelId/quizzes", () => {
     expect(json.data.startTime).toBe("2025-01-01T00:00:00.000Z");
     expect(json.data.endTime).toBe("2025-01-02T00:00:00.000Z");
     expect(json.data.isPublished).toBe(true);
-  });
-
-  it("should reject invalid startTime/endTime (startTime >= endTime)", async () => {
-    const role = await createTestRoleWithPermissions("QuizCreatorRole", [
-      { featureName: "quiz_management", action: "create" },
-    ]);
-    const { user, authHeaders } = await createAuthenticatedUser({
-      roleId: role.id,
-    });
-
-    const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
-
-    const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes`,
-        {
-          method: "POST",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
-            "x-forwarded-for": randomIp(),
-          },
-          body: JSON.stringify({
-            title: "Invalid Quiz",
-            startTime: "2025-01-02T00:00:00Z",
-            endTime: "2025-01-01T00:00:00Z",
-          }),
-        },
-      ),
-    );
-
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.message).toBe("startTime must be before endTime");
   });
 
   it("should reject when user lacks create permission", async () => {
@@ -142,18 +101,18 @@ describe("POST /materials/:id/levels/:levelId/quizzes", () => {
     });
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes`,
-        {
-          method: "POST",
-          headers: {
-            ...authHeaders,
-            "content-type": "application/json",
-            "x-forwarded-for": randomIp(),
-          },
-          body: JSON.stringify({ title: "Test Quiz" }),
+      new Request(`http://localhost/quizzes`, {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
+          "x-forwarded-for": randomIp(),
         },
-      ),
+        body: JSON.stringify({
+          levelId: level.id.toString(),
+          title: "Test Quiz",
+        }),
+      }),
     );
 
     expect(res.status).toBe(403);

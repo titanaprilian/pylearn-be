@@ -9,7 +9,7 @@ import {
   randomIp,
 } from "../test_utils";
 
-describe("GET /materials/:id/levels/:levelId/quizzes/:quizId", () => {
+describe("GET /quizzes/:id", () => {
   beforeEach(async () => {
     await resetDatabase();
   });
@@ -37,16 +37,13 @@ describe("GET /materials/:id/levels/:levelId/quizzes/:quizId", () => {
     });
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes/${quiz.id}`,
-        {
-          method: "GET",
-          headers: {
-            ...authHeaders,
-            "x-forwarded-for": randomIp(),
-          },
+      new Request(`http://localhost/quizzes/${quiz.id}`, {
+        method: "GET",
+        headers: {
+          ...authHeaders,
+          "x-forwarded-for": randomIp(),
         },
-      ),
+      }),
     );
 
     expect(res.status).toBe(200);
@@ -60,26 +57,18 @@ describe("GET /materials/:id/levels/:levelId/quizzes/:quizId", () => {
     const role = await createTestRoleWithPermissions("QuizReaderRole", [
       { featureName: "quiz_management", action: "read" },
     ]);
-    const { user, authHeaders } = await createAuthenticatedUser({
+    const { authHeaders } = await createAuthenticatedUser({
       roleId: role.id,
     });
 
-    const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
-
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes/999999`,
-        {
-          method: "GET",
-          headers: {
-            ...authHeaders,
-            "x-forwarded-for": randomIp(),
-          },
+      new Request(`http://localhost/quizzes/999999`, {
+        method: "GET",
+        headers: {
+          ...authHeaders,
+          "x-forwarded-for": randomIp(),
         },
-      ),
+      }),
     );
 
     expect(res.status).toBe(404);
@@ -104,16 +93,13 @@ describe("GET /materials/:id/levels/:levelId/quizzes/:quizId", () => {
     });
 
     const res = await app.handle(
-      new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes/${quiz.id}`,
-        {
-          method: "GET",
-          headers: {
-            ...authHeaders,
-            "x-forwarded-for": randomIp(),
-          },
+      new Request(`http://localhost/quizzes/${quiz.id}`, {
+        method: "GET",
+        headers: {
+          ...authHeaders,
+          "x-forwarded-for": randomIp(),
         },
-      ),
+      }),
     );
 
     expect(res.status).toBe(403);
