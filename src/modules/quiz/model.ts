@@ -44,6 +44,17 @@ export const QuizQuestionSafe = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const KeywordSafe = z.object({
+  id: z.string(),
+  questionId: z.string(),
+  quizId: z.string(),
+  quizTitle: z.string(),
+  blankOrder: z.number(),
+  correctAnswer: z.string(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
 export const QuizModel = {
   quiz: createResponseSchema(QuizSafe),
   quizzes: createResponseSchema(z.array(QuizSafe)),
@@ -56,6 +67,12 @@ export const QuizModel = {
   createQuestionResult: createResponseSchema(QuizQuestionSafe),
   updateQuestionResult: createResponseSchema(QuizQuestionSafe),
   deleteQuestionResult: createResponseSchema(QuizDeleteSafe),
+
+  keyword: createResponseSchema(KeywordSafe),
+  keywords: createResponseSchema(z.array(KeywordSafe)),
+  createKeywordResult: createResponseSchema(KeywordSafe),
+  updateKeywordResult: createResponseSchema(KeywordSafe),
+  deleteKeywordResult: createResponseSchema(QuizDeleteSafe),
 
   error: createErrorSchema(z.null()),
   validationError: createErrorSchema(

@@ -1,0 +1,405 @@
+import { describe, it, expect, beforeEach, afterAll } from "bun:test";
+import { app } from "@/server";
+import { prisma } from "@/libs/prisma";
+import {
+  createAuthenticatedUser,
+  createTestRoleWithPermissions,
+  resetDatabase,
+} from "../test_utils";
+
+describe("Question Keywords API", () => {
+  let authHeaders: any;
+  let materialId: string;
+  let levelId: string;
+  let quizId: string;
+  const baseUrl = (mId: string, lId: string, qId: string, questionId: string) =>
+    `http://localhost/materials/${mId}/levels/${lId}/quizzes/${qId}/questions/${questionId}/keywords`;
+
+  beforeEach(async () => {
+    await resetDatabase();
+
+    const role = await createTestRoleWithPermissions("Admin", [
+      { featureName: "material_management", action: "create" },
+      { featureName: "material_management", action: "read" },
+      { featureName: "quiz_management", action: "create" },
+      { featureName: "quiz_management", action: "read" },
+      { featureName: "quiz_management", action: "update" },
+      { featureName: "quiz_management", action: "delete" },
+    ]);
+
+    const auth = await createAuthenticatedUser({ roleId: role.id });
+    authHeaders = auth.authHeaders;
+
+    const mResponse = await app.handle(
+      new Request("http://localhost/materials", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          lecturerId: auth.user.id,
+          title: "Test Material",
+          materialType: "text",
+        }),
+      }),
+    );
+    const mBody = await mResponse.json();
+    materialId = mBody.data.id;
+
+    const lResponse = await app.handle(
+      new Request(`http://localhost/materials/${materialId}/levels`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ title: "Level 1" }),
+      }),
+    );
+    const lBody = await lResponse.json();
+    levelId = lBody.data.id;
+
+    const qResponse = await app.handle(
+      new Request(
+        `http://localhost/materials/${materialId}/levels/${levelId}/quizzes`,
+        {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify({ title: "Quiz 1" }),
+        },
+      ),
+    );
+    const qBody = await qResponse.json();
+    quizId = qBody.data.id;
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe("POST /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId/keywords", () => {
+    it("should create a keyword", async () => {
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      const res = await app.handle(
+        new Request(
+          baseUrl(materialId, levelId, quizId, question.id.toString()),
+          {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({
+              blankOrder: 1,
+              correctAnswer: "answer1",
+            }),
+          },
+        ),
+      );
+
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.data.blankOrder).toBe(1);
+      expect(body.data.correctAnswer).toBe("answer1");
+      expect(body.data.quizId).toBe(quizId);
+      expect(body.data.quizTitle).toBe("Quiz 1");
+    });
+
+    it("should reject duplicate blankOrder per question", async () => {
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      await prisma.questionKeyword.create({
+        data: {
+          questionId: question.id,
+          blankOrder: 1,
+          correctAnswer: "first",
+        },
+      });
+
+      const res = await app.handle(
+        new Request(
+          baseUrl(materialId, levelId, quizId, question.id.toString()),
+          {
+            method: "POST",
+            headers: authHeaders,
+            body: JSON.stringify({
+              blankOrder: 1,
+              correctAnswer: "duplicate",
+            }),
+          },
+        ),
+      );
+
+      expect(res.status).toBe(400);
+    });
+
+    it("should reject when user lacks create permission", async () => {
+      const readOnlyRole = await createTestRoleWithPermissions("ReadOnlyQuiz", [
+        { featureName: "quiz_management", action: "read" },
+      ]);
+      const readOnlyAuth = await createAuthenticatedUser({
+        id: "read-only-test",
+        email: "readonly@hello.com",
+        roleId: readOnlyRole.id,
+      });
+
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      const res = await app.handle(
+        new Request(
+          baseUrl(materialId, levelId, quizId, question.id.toString()),
+          {
+            method: "POST",
+            headers: readOnlyAuth.authHeaders,
+            body: JSON.stringify({
+              blankOrder: 1,
+              correctAnswer: "test",
+            }),
+          },
+        ),
+      );
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe("GET /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId/keywords", () => {
+    it("should list keywords with quiz info", async () => {
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      await prisma.questionKeyword.create({
+        data: {
+          questionId: question.id,
+          blankOrder: 1,
+          correctAnswer: "answer1",
+        },
+      });
+      await prisma.questionKeyword.create({
+        data: {
+          questionId: question.id,
+          blankOrder: 2,
+          correctAnswer: "answer2",
+        },
+      });
+
+      const res = await app.handle(
+        new Request(
+          baseUrl(materialId, levelId, quizId, question.id.toString()),
+          {
+            method: "GET",
+            headers: authHeaders,
+          },
+        ),
+      );
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data).toHaveLength(2);
+      expect(body.data[0].quizId).toBe(quizId);
+      expect(body.data[0].quizTitle).toBe("Quiz 1");
+      expect(body.data[0].blankOrder).toBe(1);
+      expect(body.data[1].blankOrder).toBe(2);
+    });
+
+    it("should return empty list when no keywords exist", async () => {
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      const res = await app.handle(
+        new Request(
+          baseUrl(materialId, levelId, quizId, question.id.toString()),
+          {
+            method: "GET",
+            headers: authHeaders,
+          },
+        ),
+      );
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data).toEqual([]);
+    });
+  });
+
+  describe("PATCH /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId/keywords/:keywordId", () => {
+    it("should update a keyword", async () => {
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      const keyword = await prisma.questionKeyword.create({
+        data: {
+          questionId: question.id,
+          blankOrder: 1,
+          correctAnswer: "original",
+        },
+      });
+
+      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
+      const res = await app.handle(
+        new Request(`${url}/${keyword.id.toString()}`, {
+          method: "PATCH",
+          headers: authHeaders,
+          body: JSON.stringify({
+            blankOrder: 2,
+            correctAnswer: "updated",
+          }),
+        }),
+      );
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.blankOrder).toBe(2);
+      expect(body.data.correctAnswer).toBe("updated");
+    });
+
+    it("should return 404 for non-existent keyword", async () => {
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
+      const res = await app.handle(
+        new Request(`${url}/999999`, {
+          method: "PATCH",
+          headers: authHeaders,
+          body: JSON.stringify({ correctAnswer: "updated" }),
+        }),
+      );
+
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("DELETE /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId/keywords/:keywordId", () => {
+    it("should delete a keyword", async () => {
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      const keyword = await prisma.questionKeyword.create({
+        data: {
+          questionId: question.id,
+          blankOrder: 1,
+          correctAnswer: "to delete",
+        },
+      });
+
+      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
+      const res = await app.handle(
+        new Request(`${url}/${keyword.id.toString()}`, {
+          method: "DELETE",
+          headers: authHeaders,
+        }),
+      );
+
+      expect(res.status).toBe(200);
+
+      const deleted = await prisma.questionKeyword.findUnique({
+        where: { id: keyword.id },
+      });
+      expect(deleted).toBeNull();
+    });
+
+    it("should return 404 for non-existent keyword", async () => {
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
+      const res = await app.handle(
+        new Request(`${url}/999999`, {
+          method: "DELETE",
+          headers: authHeaders,
+        }),
+      );
+
+      expect(res.status).toBe(404);
+    });
+
+    it("should reject when user lacks delete permission", async () => {
+      const readOnlyRole = await createTestRoleWithPermissions("ReadOnlyQuiz", [
+        { featureName: "quiz_management", action: "read" },
+      ]);
+      const readOnlyAuth = await createAuthenticatedUser({
+        id: "read-only-test",
+        email: "readonly@hello.com",
+        roleId: readOnlyRole.id,
+      });
+
+      const question = await prisma.quizQuestion.create({
+        data: {
+          quizId: BigInt(quizId),
+          questionText: "Fill in the blank",
+          answerText: "Test answer",
+          questionOrder: 1,
+        },
+      });
+
+      const keyword = await prisma.questionKeyword.create({
+        data: {
+          questionId: question.id,
+          blankOrder: 1,
+          correctAnswer: "to delete",
+        },
+      });
+
+      const url = baseUrl(materialId, levelId, quizId, question.id.toString());
+      const res = await app.handle(
+        new Request(`${url}/${keyword.id.toString()}`, {
+          method: "DELETE",
+          headers: readOnlyAuth.authHeaders,
+        }),
+      );
+
+      expect(res.status).toBe(403);
+    });
+  });
+});

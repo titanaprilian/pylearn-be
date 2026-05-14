@@ -46,7 +46,34 @@ export const QuestionParamSchema = z.object({
   questionId: z.string(),
 });
 
+export const KeywordParamSchema = z.object({
+  id: z.string(),
+  levelId: z.string(),
+  quizId: z.string(),
+  questionId: z.string(),
+  keywordId: z.string(),
+});
+
+export const KeywordListParamSchema = z.object({
+  id: z.string(),
+  levelId: z.string(),
+  quizId: z.string(),
+  questionId: z.string(),
+});
+
+export const CreateKeywordSchema = z.object({
+  blankOrder: z.number().int().min(0, "Blank order must be non-negative"),
+  correctAnswer: z.string().min(1, "Correct answer is required"),
+});
+
+export const UpdateKeywordSchema = z.object({
+  blankOrder: z.number().int().min(0).optional(),
+  correctAnswer: z.string().min(1).optional(),
+});
+
 export type CreateQuizInput = z.infer<typeof CreateQuizSchema>;
 export type UpdateQuizInput = z.infer<typeof UpdateQuizSchema>;
 export type CreateQuizQuestionInput = z.infer<typeof CreateQuizQuestionSchema>;
 export type UpdateQuizQuestionInput = z.infer<typeof UpdateQuizQuestionSchema>;
+export type CreateKeywordInput = z.infer<typeof CreateKeywordSchema>;
+export type UpdateKeywordInput = z.infer<typeof UpdateKeywordSchema>;

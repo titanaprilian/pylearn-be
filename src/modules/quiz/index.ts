@@ -1,4 +1,8 @@
-import { QuizService, QuizQuestionService } from "./service";
+import {
+  QuizService,
+  QuizQuestionService,
+  QuestionKeywordService,
+} from "./service";
 import { QuizModel } from "./model";
 import {
   CreateQuizSchema,
@@ -8,6 +12,10 @@ import {
   CreateQuizQuestionSchema,
   UpdateQuizQuestionSchema,
   QuestionParamSchema,
+  KeywordParamSchema,
+  KeywordListParamSchema,
+  CreateKeywordSchema,
+  UpdateKeywordSchema,
 } from "./schema";
 import { successResponse, errorResponse } from "@/libs/response";
 import { createBaseApp, createProtectedApp } from "@/libs/base";
@@ -263,12 +271,143 @@ const protectedQuizzes = createProtectedApp()
       beforeHandle: hasPermission(FEATURE_NAME, "delete"),
     },
   )
+
+  // Nested routes for Keywords
+  .get(
+    "/:quizId/questions/:questionId/keywords",
+    async ({ params, set, log, locale }) => {
+      const questionId = BigInt(params.questionId);
+      const keywords = await QuestionKeywordService.getKeywords(
+        questionId,
+        log,
+      );
+      return successResponse(
+        set,
+        keywords,
+        { key: "quiz.keywordListSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      params: KeywordListParamSchema,
+      response: {
+        200: QuizModel.keywords,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "read"),
+    },
+  )
+  .post(
+    "/:quizId/questions/:questionId/keywords",
+    async ({ params, body, set, log, locale }) => {
+      const questionId = BigInt(params.questionId);
+      const keyword = await QuestionKeywordService.createKeyword(
+        questionId,
+        body,
+        log,
+      );
+      return successResponse(
+        set,
+        keyword,
+        { key: "quiz.keywordCreateSuccess" },
+        201,
+        undefined,
+        locale,
+      );
+    },
+    {
+      params: KeywordListParamSchema,
+      body: CreateKeywordSchema,
+      response: {
+        201: QuizModel.createKeywordResult,
+        400: QuizModel.validationError,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "create"),
+    },
+  )
+  .patch(
+    "/:quizId/questions/:questionId/keywords/:keywordId",
+    async ({ params, body, set, log, locale }) => {
+      const questionId = BigInt(params.questionId);
+      const keywordId = BigInt(params.keywordId);
+      const keyword = await QuestionKeywordService.updateKeyword(
+        questionId,
+        keywordId,
+        body,
+        log,
+      );
+      return successResponse(
+        set,
+        keyword,
+        { key: "quiz.keywordUpdateSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      params: KeywordParamSchema,
+      body: UpdateKeywordSchema,
+      response: {
+        200: QuizModel.updateKeywordResult,
+        400: QuizModel.validationError,
+        404: QuizModel.error,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "update"),
+    },
+  )
+  .delete(
+    "/:quizId/questions/:questionId/keywords/:keywordId",
+    async ({ params, set, log, locale }) => {
+      const questionId = BigInt(params.questionId);
+      const keywordId = BigInt(params.keywordId);
+      const result = await QuestionKeywordService.deleteKeyword(
+        questionId,
+        keywordId,
+        log,
+      );
+      return successResponse(
+        set,
+        result,
+        { key: "quiz.keywordDeleteSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      params: KeywordParamSchema,
+      response: {
+        200: QuizModel.deleteKeywordResult,
+        404: QuizModel.error,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "delete"),
+    },
+  )
   .onError(({ error, set, locale }) => {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
       return errorResponse(set, 404, { key: "common.notFound" }, null, locale);
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return errorResponse(
+        set,
+        400,
+        "Duplicate blank order for this question",
+        null,
+        locale,
+      );
     }
 
     if (error instanceof InvalidTimeRangeError) {

@@ -4,9 +4,12 @@ import type {
   UpdateQuizInput,
   CreateQuizQuestionInput,
   UpdateQuizQuestionInput,
+  CreateKeywordInput,
+  UpdateKeywordInput,
 } from "./schema";
 import type { Logger } from "pino";
 import { InvalidTimeRangeError, CannotDeleteQuestionError } from "./error";
+import { Prisma } from "@generated/prisma";
 
 export const SAFE_QUIZ_SELECT = {
   id: true,
@@ -426,6 +429,155 @@ export abstract class QuizQuestionService {
 
     return {
       id: questionId.toString(),
+    };
+  }
+}
+
+export const SAFE_KEYWORD_SELECT = {
+  id: true,
+  questionId: true,
+  blankOrder: true,
+  correctAnswer: true,
+  createdAt: true,
+  updatedAt: true,
+  question: {
+    select: {
+      id: true,
+      quiz: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
+    },
+  },
+} as const;
+
+export abstract class QuestionKeywordService {
+  static async getKeywords(questionId: bigint, log: Logger) {
+    log.debug(
+      { questionId: questionId.toString() },
+      "Fetching keywords for question",
+    );
+
+    const keywords = await prisma.questionKeyword.findMany({
+      where: { questionId },
+      select: SAFE_KEYWORD_SELECT,
+      orderBy: { blankOrder: "asc" },
+    });
+
+    log.info(
+      { questionId: questionId.toString(), count: keywords.length },
+      "Keywords retrieved successfully",
+    );
+
+    return keywords.map((k) => ({
+      id: k.id.toString(),
+      questionId: k.questionId.toString(),
+      quizId: k.question.quiz.id.toString(),
+      quizTitle: k.question.quiz.title,
+      blankOrder: k.blankOrder,
+      correctAnswer: k.correctAnswer,
+      createdAt: k.createdAt.toISOString(),
+      updatedAt: k.updatedAt.toISOString(),
+    }));
+  }
+
+  static async createKeyword(
+    questionId: bigint,
+    data: CreateKeywordInput,
+    log: Logger,
+  ) {
+    log.debug(
+      { questionId: questionId.toString(), blankOrder: data.blankOrder },
+      "Creating new keyword",
+    );
+
+    const keyword = await prisma.questionKeyword.create({
+      data: {
+        questionId,
+        blankOrder: data.blankOrder,
+        correctAnswer: data.correctAnswer,
+      },
+      select: SAFE_KEYWORD_SELECT,
+    });
+
+    log.info(
+      { keywordId: keyword.id.toString(), blankOrder: keyword.blankOrder },
+      "Keyword created successfully",
+    );
+
+    return {
+      id: keyword.id.toString(),
+      questionId: keyword.questionId.toString(),
+      quizId: keyword.question.quiz.id.toString(),
+      quizTitle: keyword.question.quiz.title,
+      blankOrder: keyword.blankOrder,
+      correctAnswer: keyword.correctAnswer,
+      createdAt: keyword.createdAt.toISOString(),
+      updatedAt: keyword.updatedAt.toISOString(),
+    };
+  }
+
+  static async updateKeyword(
+    questionId: bigint,
+    keywordId: bigint,
+    data: UpdateKeywordInput,
+    log: Logger,
+  ) {
+    log.debug(
+      { questionId: questionId.toString(), keywordId: keywordId.toString() },
+      "Updating keyword",
+    );
+
+    const keyword = await prisma.questionKeyword.update({
+      where: { id: keywordId, questionId },
+      data: {
+        blankOrder: data.blankOrder,
+        correctAnswer: data.correctAnswer,
+      },
+      select: SAFE_KEYWORD_SELECT,
+    });
+
+    log.info(
+      { keywordId: keyword.id.toString() },
+      "Keyword updated successfully",
+    );
+
+    return {
+      id: keyword.id.toString(),
+      questionId: keyword.questionId.toString(),
+      quizId: keyword.question.quiz.id.toString(),
+      quizTitle: keyword.question.quiz.title,
+      blankOrder: keyword.blankOrder,
+      correctAnswer: keyword.correctAnswer,
+      createdAt: keyword.createdAt.toISOString(),
+      updatedAt: keyword.updatedAt.toISOString(),
+    };
+  }
+
+  static async deleteKeyword(
+    questionId: bigint,
+    keywordId: bigint,
+    log: Logger,
+  ) {
+    log.debug(
+      { questionId: questionId.toString(), keywordId: keywordId.toString() },
+      "Deleting keyword",
+    );
+
+    const keyword = await prisma.questionKeyword.delete({
+      where: { id: keywordId, questionId },
+      select: { id: true },
+    });
+
+    log.info(
+      { keywordId: keyword.id.toString() },
+      "Keyword deleted successfully",
+    );
+
+    return {
+      id: keyword.id.toString(),
     };
   }
 }
