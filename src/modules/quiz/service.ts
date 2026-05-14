@@ -8,7 +8,7 @@ import type {
   UpdateKeywordInput,
 } from "./schema";
 import type { Logger } from "pino";
-import { InvalidTimeRangeError, CannotDeleteQuestionError } from "./error";
+import { InvalidTimeRangeError } from "./error";
 import { Prisma } from "@generated/prisma";
 
 export const SAFE_QUIZ_SELECT = {
@@ -36,20 +36,20 @@ export const SAFE_QUIZ_SELECT = {
 } as const;
 
 export abstract class QuizService {
-  static async getQuizzes(materialLevelId: bigint, log: Logger) {
+  static async getQuizzes(levelId: bigint, log: Logger) {
     log.debug(
-      { materialLevelId: materialLevelId.toString() },
+      { materialLevelId: levelId.toString() },
       "Fetching quizzes for level",
     );
 
     const quizzes = await prisma.quiz.findMany({
-      where: { materialLevelId },
+      where: { materialLevelId: levelId },
       select: SAFE_QUIZ_SELECT,
       orderBy: { createdAt: "desc" },
     });
 
     log.info(
-      { materialLevelId: materialLevelId.toString(), count: quizzes.length },
+      { materialLevelId: levelId.toString(), count: quizzes.length },
       "Quizzes retrieved successfully",
     );
 
@@ -69,17 +69,16 @@ export abstract class QuizService {
     }));
   }
 
-  static async getQuiz(materialLevelId: bigint, quizId: bigint, log: Logger) {
+  static async getQuiz(quizId: bigint, log: Logger) {
     log.debug(
       {
-        materialLevelId: materialLevelId.toString(),
         quizId: quizId.toString(),
       },
       "Fetching quiz details",
     );
 
-    const quiz = await prisma.quiz.findFirstOrThrow({
-      where: { id: quizId, materialLevelId },
+    const quiz = await prisma.quiz.findUniqueOrThrow({
+      where: { id: quizId },
       select: SAFE_QUIZ_SELECT,
     });
 
@@ -104,13 +103,10 @@ export abstract class QuizService {
     };
   }
 
-  static async createQuiz(
-    materialLevelId: bigint,
-    data: CreateQuizInput,
-    log: Logger,
-  ) {
+  static async createQuiz(data: CreateQuizInput, log: Logger) {
+    const levelId = BigInt(data.levelId);
     log.debug(
-      { materialLevelId: materialLevelId.toString(), title: data.title },
+      { materialLevelId: levelId.toString(), title: data.title },
       "Creating new quiz",
     );
 
@@ -124,7 +120,7 @@ export abstract class QuizService {
 
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId,
+        materialLevelId: levelId,
         title: data.title,
         description: data.description,
         startTime: data.startTime ? new Date(data.startTime) : null,
@@ -162,22 +158,16 @@ export abstract class QuizService {
     };
   }
 
-  static async updateQuiz(
-    materialLevelId: bigint,
-    quizId: bigint,
-    data: UpdateQuizInput,
-    log: Logger,
-  ) {
+  static async updateQuiz(quizId: bigint, data: UpdateQuizInput, log: Logger) {
     log.debug(
       {
-        materialLevelId: materialLevelId.toString(),
         quizId: quizId.toString(),
       },
       "Updating quiz",
     );
 
-    const existing = await prisma.quiz.findFirst({
-      where: { id: quizId, materialLevelId },
+    const existing = await prisma.quiz.findUnique({
+      where: { id: quizId },
       select: { startTime: true, endTime: true },
     });
 
@@ -232,14 +222,9 @@ export abstract class QuizService {
     };
   }
 
-  static async deleteQuiz(
-    materialLevelId: bigint,
-    quizId: bigint,
-    log: Logger,
-  ) {
+  static async deleteQuiz(quizId: bigint, log: Logger) {
     log.debug(
       {
-        materialLevelId: materialLevelId.toString(),
         quizId: quizId.toString(),
       },
       "Deleting quiz",
@@ -269,6 +254,7 @@ export const SAFE_QUESTION_SELECT = {
   updatedAt: true,
   quiz: {
     select: {
+      id: true,
       title: true,
     },
   },
@@ -302,11 +288,8 @@ export abstract class QuizQuestionService {
     }));
   }
 
-  static async createQuestion(
-    quizId: bigint,
-    data: CreateQuizQuestionInput,
-    log: Logger,
-  ) {
+  static async createQuestion(data: CreateQuizQuestionInput, log: Logger) {
+    const quizId = BigInt(data.quizId);
     log.debug(
       { quizId: quizId.toString(), questionText: data.questionText },
       "Creating new quiz question",
@@ -353,18 +336,14 @@ export abstract class QuizQuestionService {
   }
 
   static async updateQuestion(
-    quizId: bigint,
     questionId: bigint,
     data: UpdateQuizQuestionInput,
     log: Logger,
   ) {
-    log.debug(
-      { quizId: quizId.toString(), questionId: questionId.toString() },
-      "Updating quiz question",
-    );
+    log.debug({ questionId: questionId.toString() }, "Updating quiz question");
 
     const question = await prisma.quizQuestion.update({
-      where: { id: questionId, quizId },
+      where: { id: questionId },
       data: {
         questionText: data.questionText,
         answerText: data.answerText,
@@ -391,45 +370,82 @@ export abstract class QuizQuestionService {
     };
   }
 
-  static async deleteQuestion(quizId: bigint, questionId: bigint, log: Logger) {
+  static async deleteQuestion(questionId: bigint, log: Logger) {
+    log.debug({ questionId: questionId.toString() }, "Deleting quiz question");
+
+    return await prisma.$transaction(async (tx) => {
+      const question = await tx.quizQuestion.findUnique({
+        where: { id: questionId },
+        select: { quizId: true, questionOrder: true },
+      });
+
+      if (!question) {
+        throw new Prisma.PrismaClientKnownRequestError("Question not found", {
+          code: "P2025",
+          clientVersion: "6.5.0",
+        });
+      }
+
+      // Delete the targeted question
+      await tx.quizQuestion.delete({ where: { id: questionId } });
+
+      // Shift all sequential questions down by 1 to maintain structural continuity
+      await tx.quizQuestion.updateMany({
+        where: {
+          quizId: question.quizId,
+          questionOrder: { gt: question.questionOrder },
+        },
+        data: {
+          questionOrder: { decrement: 1 },
+        },
+      });
+
+      log.info(
+        { questionId: questionId.toString() },
+        "Quiz question deleted and sequence reordered",
+      );
+      return { id: questionId.toString() };
+    });
+  }
+
+  static async getGroupedQuestionsByMaterial(materialId: bigint, log: Logger) {
     log.debug(
-      { quizId: quizId.toString(), questionId: questionId.toString() },
-      "Deleting quiz question",
+      { materialId: materialId.toString() },
+      "Fetching grouped questions for material",
     );
 
-    const question = await prisma.quizQuestion.findFirst({
-      where: { id: questionId, quizId },
-      select: { questionOrder: true },
-    });
-
-    if (!question) {
-      throw new Prisma.PrismaClientKnownRequestError("Question not found", {
-        code: "P2025",
-        clientVersion: "6.5.0",
-      });
-    }
-
-    const maxOrder = await prisma.quizQuestion.aggregate({
-      where: { quizId },
-      _max: { questionOrder: true },
-    });
-
-    if (question.questionOrder !== maxOrder._max.questionOrder) {
-      throw new CannotDeleteQuestionError();
-    }
-
-    await prisma.quizQuestion.delete({
-      where: { id: questionId },
+    const materialLevels = await prisma.materialLevel.findMany({
+      where: { materialId },
+      include: {
+        quizzes: {
+          include: {
+            questions: true,
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+      orderBy: { levelOrder: "asc" },
     });
 
     log.info(
-      { questionId: questionId.toString() },
-      "Quiz question deleted successfully",
+      { materialId: materialId.toString(), levelsCount: materialLevels.length },
+      "Grouped questions retrieved successfully",
     );
 
-    return {
-      id: questionId.toString(),
-    };
+    return materialLevels.map((level) => ({
+      levelId: level.id.toString(),
+      levelTitle: level.title,
+      quizzes: level.quizzes.map((quiz) => ({
+        quizId: quiz.id.toString(),
+        quizTitle: quiz.title,
+        questions: quiz.questions.map((q) => ({
+          id: q.id.toString(),
+          questionText: q.questionText,
+          maxScore: q.maxScore,
+          questionOrder: q.questionOrder,
+        })),
+      })),
+    }));
   }
 }
 
@@ -483,11 +499,8 @@ export abstract class QuestionKeywordService {
     }));
   }
 
-  static async createKeyword(
-    questionId: bigint,
-    data: CreateKeywordInput,
-    log: Logger,
-  ) {
+  static async createKeyword(data: CreateKeywordInput, log: Logger) {
+    const questionId = BigInt(data.questionId);
     log.debug(
       { questionId: questionId.toString(), blankOrder: data.blankOrder },
       "Creating new keyword",
@@ -520,18 +533,14 @@ export abstract class QuestionKeywordService {
   }
 
   static async updateKeyword(
-    questionId: bigint,
     keywordId: bigint,
     data: UpdateKeywordInput,
     log: Logger,
   ) {
-    log.debug(
-      { questionId: questionId.toString(), keywordId: keywordId.toString() },
-      "Updating keyword",
-    );
+    log.debug({ keywordId: keywordId.toString() }, "Updating keyword");
 
     const keyword = await prisma.questionKeyword.update({
-      where: { id: keywordId, questionId },
+      where: { id: keywordId },
       data: {
         blankOrder: data.blankOrder,
         correctAnswer: data.correctAnswer,
@@ -556,18 +565,11 @@ export abstract class QuestionKeywordService {
     };
   }
 
-  static async deleteKeyword(
-    questionId: bigint,
-    keywordId: bigint,
-    log: Logger,
-  ) {
-    log.debug(
-      { questionId: questionId.toString(), keywordId: keywordId.toString() },
-      "Deleting keyword",
-    );
+  static async deleteKeyword(keywordId: bigint, log: Logger) {
+    log.debug({ keywordId: keywordId.toString() }, "Deleting keyword");
 
     const keyword = await prisma.questionKeyword.delete({
-      where: { id: keywordId, questionId },
+      where: { id: keywordId },
       select: { id: true },
     });
 

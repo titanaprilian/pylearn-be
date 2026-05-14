@@ -12,8 +12,6 @@ describe("Quiz Questions API", () => {
   let materialId: string;
   let levelId: string;
   let quizId: string;
-  const baseUrl = (mId: string, lId: string, qId: string) =>
-    `http://localhost/materials/${mId}/levels/${lId}/quizzes/${qId}/questions`;
 
   beforeEach(async () => {
     await resetDatabase();
@@ -55,15 +53,19 @@ describe("Quiz Questions API", () => {
     const lBody = await lResponse.json();
     levelId = lBody.data.id;
 
+    // Use the flattened POST /quizzes endpoint from earlier
     const qResponse = await app.handle(
-      new Request(
-        `http://localhost/materials/${materialId}/levels/${levelId}/quizzes`,
-        {
-          method: "POST",
-          headers: authHeaders,
-          body: JSON.stringify({ title: "Quiz 1" }),
+      new Request("http://localhost/quizzes", {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "content-type": "application/json",
         },
-      ),
+        body: JSON.stringify({
+          title: "Quiz 1",
+          levelId: levelId,
+        }),
+      }),
     );
     const qBody = await qResponse.json();
     quizId = qBody.data.id;
@@ -73,16 +75,18 @@ describe("Quiz Questions API", () => {
     await prisma.$disconnect();
   });
 
-  describe("POST /materials/:id/levels/:levelId/quizzes/:quizId/questions", () => {
+  describe("POST /questions", () => {
     it("should create questions with sequential order", async () => {
-      const url = baseUrl(materialId, levelId, quizId);
-
       // First question
       const res1 = await app.handle(
-        new Request(url, {
+        new Request("http://localhost/questions", {
           method: "POST",
-          headers: authHeaders,
+          headers: {
+            ...authHeaders,
+            "content-type": "application/json",
+          },
           body: JSON.stringify({
+            quizId: quizId, // Included in body
             questionText: "Question 1",
             answerText: "Answer 1",
             maxScore: 50,
@@ -98,10 +102,14 @@ describe("Quiz Questions API", () => {
 
       // Second question
       const res2 = await app.handle(
-        new Request(url, {
+        new Request("http://localhost/questions", {
           method: "POST",
-          headers: authHeaders,
+          headers: {
+            ...authHeaders,
+            "content-type": "application/json",
+          },
           body: JSON.stringify({
+            quizId: quizId, // Included in body
             questionText: "Question 2",
             answerText: "Answer 2",
           }),
@@ -115,10 +123,8 @@ describe("Quiz Questions API", () => {
     });
   });
 
-  describe("GET /materials/:id/levels/:levelId/quizzes/:quizId/questions", () => {
+  describe("GET /questions", () => {
     it("should list questions with quiz title", async () => {
-      const url = baseUrl(materialId, levelId, quizId);
-
       await prisma.quizQuestion.create({
         data: {
           quizId: BigInt(quizId),
@@ -129,7 +135,7 @@ describe("Quiz Questions API", () => {
       });
 
       const res = await app.handle(
-        new Request(url, {
+        new Request(`http://localhost/questions?quizId=${quizId}`, {
           method: "GET",
           headers: authHeaders,
         }),
@@ -144,7 +150,7 @@ describe("Quiz Questions API", () => {
     });
   });
 
-  describe("PATCH /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId", () => {
+  describe("PATCH /questions/:id", () => {
     it("should update question text and max score", async () => {
       const q = await prisma.quizQuestion.create({
         data: {
@@ -156,11 +162,13 @@ describe("Quiz Questions API", () => {
         },
       });
 
-      const url = `${baseUrl(materialId, levelId, quizId)}/${q.id.toString()}`;
       const res = await app.handle(
-        new Request(url, {
+        new Request(`http://localhost/questions/${q.id.toString()}`, {
           method: "PATCH",
-          headers: authHeaders,
+          headers: {
+            ...authHeaders,
+            "content-type": "application/json",
+          },
           body: JSON.stringify({
             questionText: "Updated Text",
             answerText: "Updated Answer",
@@ -177,8 +185,8 @@ describe("Quiz Questions API", () => {
     });
   });
 
-  describe("DELETE /materials/:id/levels/:levelId/quizzes/:quizId/questions/:questionId", () => {
-    it("should block deletion if not the last question", async () => {
+  describe("DELETE /questions/:id", () => {
+    it("should allow deletion if not the last question", async () => {
       const q1 = await prisma.quizQuestion.create({
         data: {
           quizId: BigInt(quizId),
@@ -196,17 +204,14 @@ describe("Quiz Questions API", () => {
         },
       });
 
-      const url = `${baseUrl(materialId, levelId, quizId)}/${q1.id.toString()}`;
       const res = await app.handle(
-        new Request(url, {
+        new Request(`http://localhost/questions/${q1.id.toString()}`, {
           method: "DELETE",
           headers: authHeaders,
         }),
       );
 
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.message).toContain("reverse sequential order");
+      expect(res.status).toBe(200);
     });
 
     it("should allow deletion of the last question", async () => {
@@ -219,9 +224,8 @@ describe("Quiz Questions API", () => {
         },
       });
 
-      const url = `${baseUrl(materialId, levelId, quizId)}/${q1.id.toString()}`;
       const res = await app.handle(
-        new Request(url, {
+        new Request(`http://localhost/questions/${q1.id.toString()}`, {
           method: "DELETE",
           headers: authHeaders,
         }),

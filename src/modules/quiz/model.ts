@@ -44,15 +44,34 @@ export const QuizQuestionSafe = z.object({
   updatedAt: z.string().datetime(),
 });
 
-export const KeywordSafe = z.object({
+export const QuestionKeywordSafe = z.object({
   id: z.string(),
   questionId: z.string(),
-  quizId: z.string(),
-  quizTitle: z.string(),
+  quizId: z.string().optional(),
+  quizTitle: z.string().optional(),
   blankOrder: z.number(),
   correctAnswer: z.string(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+});
+
+export const GroupedQuestion = z.object({
+  id: z.string(),
+  questionText: z.string(),
+  maxScore: z.number(),
+  questionOrder: z.number(),
+});
+
+export const GroupedQuiz = z.object({
+  quizId: z.string(),
+  quizTitle: z.string(),
+  questions: z.array(GroupedQuestion),
+});
+
+export const GroupedMaterialLevel = z.object({
+  levelId: z.string(),
+  levelTitle: z.string(),
+  quizzes: z.array(GroupedQuiz),
 });
 
 export const QuizModel = {
@@ -68,11 +87,13 @@ export const QuizModel = {
   updateQuestionResult: createResponseSchema(QuizQuestionSafe),
   deleteQuestionResult: createResponseSchema(QuizDeleteSafe),
 
-  keyword: createResponseSchema(KeywordSafe),
-  keywords: createResponseSchema(z.array(KeywordSafe)),
-  createKeywordResult: createResponseSchema(KeywordSafe),
-  updateKeywordResult: createResponseSchema(KeywordSafe),
+  keyword: createResponseSchema(QuestionKeywordSafe),
+  keywords: createResponseSchema(z.array(QuestionKeywordSafe)),
+  createKeywordResult: createResponseSchema(QuestionKeywordSafe),
+  updateKeywordResult: createResponseSchema(QuestionKeywordSafe),
   deleteKeywordResult: createResponseSchema(QuizDeleteSafe),
+
+  groupedQuestions: createResponseSchema(z.array(GroupedMaterialLevel)),
 
   error: createErrorSchema(z.null()),
   validationError: createErrorSchema(

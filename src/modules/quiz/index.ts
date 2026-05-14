@@ -8,14 +8,16 @@ import {
   CreateQuizSchema,
   UpdateQuizSchema,
   QuizParamSchema,
-  QuizListParamSchema,
   CreateQuizQuestionSchema,
   UpdateQuizQuestionSchema,
   QuestionParamSchema,
   KeywordParamSchema,
-  KeywordListParamSchema,
   CreateKeywordSchema,
   UpdateKeywordSchema,
+  GetQuizzesQuerySchema,
+  GetQuestionsQuerySchema,
+  GetGroupedQuestionsQuerySchema,
+  GetKeywordsQuerySchema,
 } from "./schema";
 import { successResponse, errorResponse } from "@/libs/response";
 import { createBaseApp, createProtectedApp } from "@/libs/base";
@@ -26,11 +28,12 @@ import { InvalidTimeRangeError, CannotDeleteQuestionError } from "./error";
 const FEATURE_NAME = "quiz_management";
 
 const protectedQuizzes = createProtectedApp()
+  // Quizzes
   .get(
-    "/",
-    async ({ params, set, log, locale }) => {
-      const materialLevelId = BigInt(params.levelId);
-      const quizzes = await QuizService.getQuizzes(materialLevelId, log);
+    "/quizzes",
+    async ({ query, set, log, locale }) => {
+      const levelId = BigInt(query.levelId);
+      const quizzes = await QuizService.getQuizzes(levelId, log);
       return successResponse(
         set,
         quizzes,
@@ -41,7 +44,7 @@ const protectedQuizzes = createProtectedApp()
       );
     },
     {
-      params: QuizListParamSchema,
+      query: GetQuizzesQuerySchema,
       response: {
         200: QuizModel.quizzes,
         500: QuizModel.error,
@@ -50,10 +53,9 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .post(
-    "/",
-    async ({ params, body, set, log, locale }) => {
-      const materialLevelId = BigInt(params.levelId);
-      const quiz = await QuizService.createQuiz(materialLevelId, body, log);
+    "/quizzes",
+    async ({ body, set, log, locale }) => {
+      const quiz = await QuizService.createQuiz(body, log);
       return successResponse(
         set,
         quiz,
@@ -64,7 +66,6 @@ const protectedQuizzes = createProtectedApp()
       );
     },
     {
-      params: QuizListParamSchema,
       body: CreateQuizSchema,
       response: {
         201: QuizModel.createResult,
@@ -75,11 +76,10 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .get(
-    "/:quizId",
+    "/quizzes/:id",
     async ({ params, set, log, locale }) => {
-      const materialLevelId = BigInt(params.levelId);
-      const quizId = BigInt(params.quizId);
-      const quiz = await QuizService.getQuiz(materialLevelId, quizId, log);
+      const quizId = BigInt(params.id);
+      const quiz = await QuizService.getQuiz(quizId, log);
       return successResponse(
         set,
         quiz,
@@ -100,16 +100,10 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .patch(
-    "/:quizId",
+    "/quizzes/:id",
     async ({ params, body, set, log, locale }) => {
-      const materialLevelId = BigInt(params.levelId);
-      const quizId = BigInt(params.quizId);
-      const quiz = await QuizService.updateQuiz(
-        materialLevelId,
-        quizId,
-        body,
-        log,
-      );
+      const quizId = BigInt(params.id);
+      const quiz = await QuizService.updateQuiz(quizId, body, log);
       return successResponse(
         set,
         quiz,
@@ -132,11 +126,10 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .delete(
-    "/:quizId",
+    "/quizzes/:id",
     async ({ params, set, log, locale }) => {
-      const materialLevelId = BigInt(params.levelId);
-      const quizId = BigInt(params.quizId);
-      const result = await QuizService.deleteQuiz(materialLevelId, quizId, log);
+      const quizId = BigInt(params.id);
+      const result = await QuizService.deleteQuiz(quizId, log);
       return successResponse(
         set,
         result,
@@ -157,11 +150,11 @@ const protectedQuizzes = createProtectedApp()
     },
   )
 
-  // Nested routes for Questions
+  // Questions
   .get(
-    "/:quizId/questions",
-    async ({ params, set, log, locale }) => {
-      const quizId = BigInt(params.quizId);
+    "/questions",
+    async ({ query, set, log, locale }) => {
+      const quizId = BigInt(query.quizId);
       const questions = await QuizQuestionService.getQuestions(quizId, log);
       return successResponse(
         set,
@@ -173,7 +166,7 @@ const protectedQuizzes = createProtectedApp()
       );
     },
     {
-      params: QuizParamSchema,
+      query: GetQuestionsQuerySchema,
       response: {
         200: QuizModel.questions,
         500: QuizModel.error,
@@ -181,15 +174,36 @@ const protectedQuizzes = createProtectedApp()
       beforeHandle: hasPermission(FEATURE_NAME, "read"),
     },
   )
-  .post(
-    "/:quizId/questions",
-    async ({ params, body, set, log, locale }) => {
-      const quizId = BigInt(params.quizId);
-      const question = await QuizQuestionService.createQuestion(
-        quizId,
-        body,
+  .get(
+    "/questions/grouped",
+    async ({ query, set, log, locale }) => {
+      const materialId = BigInt(query.materialId);
+      const grouped = await QuizQuestionService.getGroupedQuestionsByMaterial(
+        materialId,
         log,
       );
+      return successResponse(
+        set,
+        grouped,
+        { key: "quiz.questionListSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      query: GetGroupedQuestionsQuerySchema,
+      response: {
+        200: QuizModel.groupedQuestions,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "read"),
+    },
+  )
+  .post(
+    "/questions",
+    async ({ body, set, log, locale }) => {
+      const question = await QuizQuestionService.createQuestion(body, log);
       return successResponse(
         set,
         question,
@@ -200,7 +214,6 @@ const protectedQuizzes = createProtectedApp()
       );
     },
     {
-      params: QuizParamSchema,
       body: CreateQuizQuestionSchema,
       response: {
         201: QuizModel.createQuestionResult,
@@ -211,12 +224,10 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .patch(
-    "/:quizId/questions/:questionId",
+    "/questions/:id",
     async ({ params, body, set, log, locale }) => {
-      const quizId = BigInt(params.quizId);
-      const questionId = BigInt(params.questionId);
+      const questionId = BigInt(params.id);
       const question = await QuizQuestionService.updateQuestion(
-        quizId,
         questionId,
         body,
         log,
@@ -243,15 +254,10 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .delete(
-    "/:quizId/questions/:questionId",
+    "/questions/:id",
     async ({ params, set, log, locale }) => {
-      const quizId = BigInt(params.quizId);
-      const questionId = BigInt(params.questionId);
-      const result = await QuizQuestionService.deleteQuestion(
-        quizId,
-        questionId,
-        log,
-      );
+      const questionId = BigInt(params.id);
+      const result = await QuizQuestionService.deleteQuestion(questionId, log);
       return successResponse(
         set,
         result,
@@ -272,11 +278,11 @@ const protectedQuizzes = createProtectedApp()
     },
   )
 
-  // Nested routes for Keywords
+  // Keywords
   .get(
-    "/:quizId/questions/:questionId/keywords",
-    async ({ params, set, log, locale }) => {
-      const questionId = BigInt(params.questionId);
+    "/keywords",
+    async ({ query, set, log, locale }) => {
+      const questionId = BigInt(query.questionId);
       const keywords = await QuestionKeywordService.getKeywords(
         questionId,
         log,
@@ -291,7 +297,7 @@ const protectedQuizzes = createProtectedApp()
       );
     },
     {
-      params: KeywordListParamSchema,
+      query: GetKeywordsQuerySchema,
       response: {
         200: QuizModel.keywords,
         500: QuizModel.error,
@@ -300,14 +306,9 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .post(
-    "/:quizId/questions/:questionId/keywords",
-    async ({ params, body, set, log, locale }) => {
-      const questionId = BigInt(params.questionId);
-      const keyword = await QuestionKeywordService.createKeyword(
-        questionId,
-        body,
-        log,
-      );
+    "/keywords",
+    async ({ body, set, log, locale }) => {
+      const keyword = await QuestionKeywordService.createKeyword(body, log);
       return successResponse(
         set,
         keyword,
@@ -318,7 +319,6 @@ const protectedQuizzes = createProtectedApp()
       );
     },
     {
-      params: KeywordListParamSchema,
       body: CreateKeywordSchema,
       response: {
         201: QuizModel.createKeywordResult,
@@ -329,12 +329,10 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .patch(
-    "/:quizId/questions/:questionId/keywords/:keywordId",
+    "/keywords/:id",
     async ({ params, body, set, log, locale }) => {
-      const questionId = BigInt(params.questionId);
-      const keywordId = BigInt(params.keywordId);
+      const keywordId = BigInt(params.id);
       const keyword = await QuestionKeywordService.updateKeyword(
-        questionId,
         keywordId,
         body,
         log,
@@ -361,15 +359,10 @@ const protectedQuizzes = createProtectedApp()
     },
   )
   .delete(
-    "/:quizId/questions/:questionId/keywords/:keywordId",
+    "/keywords/:id",
     async ({ params, set, log, locale }) => {
-      const questionId = BigInt(params.questionId);
-      const keywordId = BigInt(params.keywordId);
-      const result = await QuestionKeywordService.deleteKeyword(
-        questionId,
-        keywordId,
-        log,
-      );
+      const keywordId = BigInt(params.id);
+      const result = await QuestionKeywordService.deleteKeyword(keywordId, log);
       return successResponse(
         set,
         result,
@@ -404,7 +397,7 @@ const protectedQuizzes = createProtectedApp()
       return errorResponse(
         set,
         400,
-        "Duplicate blank order for this question",
+        "Duplicate order/constraint violation",
         null,
         locale,
       );
@@ -418,10 +411,15 @@ const protectedQuizzes = createProtectedApp()
       return errorResponse(set, 400, error.message, null, locale);
     }
 
-    return;
+    return errorResponse(
+      set,
+      500,
+      { key: "common.internalServerError" },
+      null,
+      locale,
+    );
   });
 
-export const quizzes = createBaseApp({ tags: ["Quizzes"] }).group(
-  "/materials/:id/levels/:levelId/quizzes",
-  (app) => app.use(protectedQuizzes),
+export const quizzes = createBaseApp({ tags: ["Quizzes"] }).use(
+  protectedQuizzes,
 );

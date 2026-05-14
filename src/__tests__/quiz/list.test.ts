@@ -9,7 +9,7 @@ import {
   randomIp,
 } from "../test_utils";
 
-describe("GET /materials/:id/levels/:levelId/quizzes", () => {
+describe("GET /quizzes", () => {
   beforeEach(async () => {
     await resetDatabase();
   });
@@ -38,7 +38,8 @@ describe("GET /materials/:id/levels/:levelId/quizzes", () => {
 
     const res = await app.handle(
       new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes`,
+        // Updated URL: Flattened path using query parameter
+        `http://localhost/quizzes?levelId=${level.id.toString()}`,
         {
           method: "GET",
           headers: {
@@ -72,7 +73,8 @@ describe("GET /materials/:id/levels/:levelId/quizzes", () => {
 
     const res = await app.handle(
       new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes`,
+        // Updated URL: Flattened path using query parameter
+        `http://localhost/quizzes?levelId=${level.id.toString()}`,
         {
           method: "GET",
           headers: {
@@ -101,7 +103,8 @@ describe("GET /materials/:id/levels/:levelId/quizzes", () => {
 
     const res = await app.handle(
       new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes`,
+        // Updated URL: Flattened path using query parameter
+        `http://localhost/quizzes?levelId=${level.id.toString()}`,
         {
           method: "GET",
         },
@@ -124,7 +127,8 @@ describe("GET /materials/:id/levels/:levelId/quizzes", () => {
 
     const res = await app.handle(
       new Request(
-        `http://localhost/materials/${material.id}/levels/${level.id}/quizzes`,
+        // Updated URL: Flattened path using query parameter
+        `http://localhost/quizzes?levelId=${level.id.toString()}`,
         {
           method: "GET",
           headers: {
