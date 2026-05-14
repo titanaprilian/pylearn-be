@@ -33,6 +33,7 @@ export const MaterialModel = {
   material: createResponseSchema(MaterialSafe),
   materials: createPaginatedResponseSchema(z.array(MaterialSafe)),
   createResult: createResponseSchema(MaterialSafe),
+  createMeResult: createResponseSchema(MaterialSafe),
   updateResult: createResponseSchema(MaterialSafe),
   deleteResult: createResponseSchema(MaterialSafe),
 

@@ -1,6 +1,7 @@
 import { prisma } from "@/libs/prisma";
 import type {
   CreateMaterialInput,
+  CreateMaterialMeInput,
   UpdateMaterialInput,
   CreateLevelInput,
   UpdateLevelInput,
@@ -147,6 +148,14 @@ export abstract class MaterialService {
       updatedAt: material.updatedAt.toISOString(),
       publishedAt: material.publishedAt?.toISOString() ?? null,
     };
+  }
+
+  static async createMaterialMe(
+    data: CreateMaterialMeInput,
+    lecturerId: string,
+    log: Logger,
+  ) {
+    return this.createMaterial({ ...data, lecturerId }, log);
   }
 
   static async updateMaterial(
