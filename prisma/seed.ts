@@ -7,6 +7,7 @@ import { prisma } from "./prisma";
 const FEATURES = [
   { name: "user_management", description: "Manage system users" },
   { name: "RBAC_management", description: "Manage roles and permissions" },
+  { name: "material_management", description: "Manage material" },
 ] as const;
 
 const ROLES = [
@@ -131,6 +132,7 @@ async function main() {
     update: { roleId: adminRoleId },
     create: {
       email: "admin@system.com",
+      userId: "superAdmin",
       name: "Super Administrator",
       password,
       roleId: roleMap.get("SuperAdmin")!,
@@ -153,6 +155,7 @@ async function main() {
         email,
         name,
         password,
+        userId: `${staffRoleId}${i}`,
         roleId: staffRoleId,
         isActive: true,
       },

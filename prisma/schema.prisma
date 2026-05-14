@@ -34,19 +34,32 @@ model User {
 }
 
 model Material {
-  id           BigInt     @id @default(autoincrement())
+  id           BigInt          @id @default(autoincrement())
   lecturerId   String
-  lecturer     User       @relation(fields: [lecturerId], references: [id])
+  lecturer     User            @relation(fields: [lecturerId], references: [id])
   title        String
   description  String?
   materialType String
-  content      String?    @db.Text
-  sourceUrl    String?    @db.Text
+  content      String?         @db.Text
+  sourceUrl    String?         @db.Text
   iconName     String?
-  isPublished  Boolean    @default(false)
+  isPublished  Boolean         @default(false)
   publishedAt  DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  levels       MaterialLevel[]
+}
+
+model MaterialLevel {
+  id          BigInt    @id @default(autoincrement())
+  materialId  BigInt
+  material    Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  title       String
+  levelOrder  Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([materialId, levelOrder])
 }
 
 model RefreshToken {
