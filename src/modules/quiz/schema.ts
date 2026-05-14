@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+// ==========================================
+// Quiz Schema
+// ==========================================
+export const GetQuizLevelsQuerySchema = z.object({
+  quizId: z.string().min(1, "Quiz ID is required").describe("Required Quiz ID"),
+});
+
 export const GetQuizzesQuerySchema = z.object({
   materialId: z
     .string()
@@ -28,6 +35,30 @@ export const QuizParamSchema = z.object({
   id: z.string(),
 });
 
+// ==========================================
+// Question Schema
+// ==========================================
+export const CreateQuizLevelSchema = z.object({
+  quizId: z.string().min(1, "Quiz ID is required"),
+  title: z.string().min(1, "Title is required"),
+  levelOrder: z
+    .number()
+    .int()
+    .positive("Level order must be a positive integer"),
+});
+
+export const UpdateQuizLevelSchema = z.object({
+  title: z.string().min(1, "Title cannot be empty").optional(),
+  levelOrder: z
+    .number()
+    .int()
+    .positive("Level order must be a positive integer")
+    .optional(),
+});
+
+// ==========================================
+// Question Schema
+// ==========================================
 export const GetQuestionsQuerySchema = z.object({
   quizId: z.string().describe("Required Quiz ID"),
 });
@@ -53,6 +84,9 @@ export const GetGroupedQuestionsQuerySchema = z.object({
   materialId: z.string().min(1, "Material ID is required"),
 });
 
+// ==========================================
+// Keywords Schema
+// ==========================================
 export const GetKeywordsQuerySchema = z.object({
   questionId: z.string().describe("Required QuizQuestion ID"),
 });
@@ -78,3 +112,6 @@ export type CreateQuizQuestionInput = z.infer<typeof CreateQuizQuestionSchema>;
 export type UpdateQuizQuestionInput = z.infer<typeof UpdateQuizQuestionSchema>;
 export type CreateKeywordInput = z.infer<typeof CreateKeywordSchema>;
 export type UpdateKeywordInput = z.infer<typeof UpdateKeywordSchema>;
+export type CreateQuizLevelInput = z.infer<typeof CreateQuizLevelSchema>;
+export type UpdateQuizLevelInput = z.infer<typeof UpdateQuizLevelSchema>;
+export type GetQuizLevelsQueryInput = z.infer<typeof GetQuizLevelsQuerySchema>;

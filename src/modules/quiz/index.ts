@@ -2,6 +2,7 @@ import {
   QuizService,
   QuizQuestionService,
   QuestionKeywordService,
+  QuizLevelService,
 } from "./service";
 import { QuizModel } from "./model";
 import {
@@ -17,6 +18,9 @@ import {
   GetQuizzesQuerySchema,
   GetQuestionsQuerySchema,
   GetKeywordsQuerySchema,
+  GetQuizLevelsQuerySchema,
+  CreateQuizLevelSchema,
+  UpdateQuizLevelSchema,
 } from "./schema";
 import { successResponse, errorResponse } from "@/libs/response";
 import { createBaseApp, createProtectedApp } from "@/libs/base";
@@ -143,6 +147,134 @@ const protectedQuizzes = createProtectedApp()
       response: {
         200: QuizModel.deleteResult,
         404: QuizModel.error,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "delete"),
+    },
+  )
+
+  // Levels
+  .get(
+    "/levels",
+    async ({ query, set, log, locale }) => {
+      const quizId = BigInt(query.quizId);
+      const levels = await QuizLevelService.getQuizLevels(quizId, log);
+      return successResponse(
+        set,
+        levels,
+        { key: "quizLevel.listSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      query: GetQuizLevelsQuerySchema,
+      response: {
+        200: QuizModel.levels,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "read"),
+    },
+  )
+
+  // 2. Get a single quiz level detail: GET /quizzes/levels/:id
+  .get(
+    "/levels/:id",
+    async ({ params: { id }, set, log, locale }) => {
+      const levelId = BigInt(id);
+      const level = await QuizLevelService.getQuizLevel(levelId, log);
+      return successResponse(
+        set,
+        level,
+        { key: "quizLevel.detailSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      response: {
+        200: QuizModel.level,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "read"),
+    },
+  )
+
+  // 3. Create a new quiz level: POST /quizzes/levels
+  .post(
+    "/levels",
+    async ({ body, set, log, locale }) => {
+      const level = await QuizLevelService.createQuizLevel(body, log);
+      return successResponse(
+        set,
+        level,
+        { key: "quizLevel.createSuccess" },
+        201,
+        undefined,
+        locale,
+      );
+    },
+    {
+      body: CreateQuizLevelSchema,
+      response: {
+        201: QuizModel.createLevelResult,
+        400: QuizModel.validationError,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "create"),
+    },
+  )
+
+  // 4. Update an existing quiz level: PATCH /quizzes/levels/:id
+  .patch(
+    "/levels/:id",
+    async ({ params: { id }, body, set, log, locale }) => {
+      const levelId = BigInt(id);
+      const updatedLevel = await QuizLevelService.updateQuizLevel(
+        levelId,
+        body,
+        log,
+      );
+      return successResponse(
+        set,
+        updatedLevel,
+        { key: "quizLevel.updateSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      body: UpdateQuizLevelSchema,
+      response: {
+        200: QuizModel.updateLevelResult,
+        400: QuizModel.validationError,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "update"),
+    },
+  )
+
+  // 5. Delete a quiz level: DELETE /quizzes/levels/:id
+  .delete(
+    "/levels/:id",
+    async ({ params: { id }, set, log, locale }) => {
+      const levelId = BigInt(id);
+      const result = await QuizLevelService.deleteQuizLevel(levelId, log);
+      return successResponse(
+        set,
+        result,
+        { key: "quizLevel.deleteSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      response: {
+        200: QuizModel.deleteLevelResult,
         500: QuizModel.error,
       },
       beforeHandle: hasPermission(FEATURE_NAME, "delete"),

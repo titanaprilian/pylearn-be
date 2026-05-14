@@ -6,6 +6,8 @@ import type {
   UpdateQuizQuestionInput,
   CreateKeywordInput,
   UpdateKeywordInput,
+  CreateQuizLevelInput,
+  UpdateQuizLevelInput,
 } from "./schema";
 import type { Logger } from "pino";
 import { InvalidTimeRangeError } from "./error";
@@ -560,6 +562,147 @@ export abstract class QuestionKeywordService {
 
     return {
       id: keyword.id.toString(),
+    };
+  }
+}
+
+export const SAFE_LEVEL_SELECT = {
+  id: true,
+  quizId: true,
+  title: true,
+  levelOrder: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+export abstract class QuizLevelService {
+  static async getQuizLevels(quizId: bigint, log: Logger) {
+    log.debug({ quizId: quizId.toString() }, "Fetching quiz levels for quiz");
+
+    const levels = await prisma.quizLevel.findMany({
+      where: { quizId: quizId },
+      select: SAFE_LEVEL_SELECT,
+      orderBy: { levelOrder: "asc" },
+    });
+
+    log.info(
+      { quizId: quizId.toString(), count: levels.length },
+      "Quiz levels retrieved successfully",
+    );
+
+    return levels.map((level) => ({
+      id: level.id.toString(),
+      quizId: level.quizId.toString(),
+      title: level.title,
+      levelOrder: level.levelOrder,
+      createdAt: level.createdAt.toISOString(),
+      updatedAt: level.updatedAt.toISOString(),
+    }));
+  }
+
+  static async getQuizLevel(levelId: bigint, log: Logger) {
+    log.debug({ levelId: levelId.toString() }, "Fetching quiz level details");
+
+    const level = await prisma.quizLevel.findUniqueOrThrow({
+      where: { id: levelId },
+      select: SAFE_LEVEL_SELECT,
+    });
+
+    log.info(
+      { levelId: level.id.toString(), title: level.title },
+      "Quiz level details retrieved successfully",
+    );
+
+    return {
+      id: level.id.toString(),
+      quizId: level.quizId.toString(),
+      title: level.title,
+      levelOrder: level.levelOrder,
+      createdAt: level.createdAt.toISOString(),
+      updatedAt: level.updatedAt.toISOString(),
+    };
+  }
+
+  static async createQuizLevel(data: CreateQuizLevelInput, log: Logger) {
+    const quizId = BigInt(data.quizId);
+    log.debug(
+      { quizId: quizId.toString(), title: data.title, order: data.levelOrder },
+      "Creating new quiz level",
+    );
+
+    const level = await prisma.quizLevel.create({
+      data: {
+        quizId: quizId,
+        title: data.title,
+        levelOrder: data.levelOrder,
+      },
+      select: SAFE_LEVEL_SELECT,
+    });
+
+    log.info(
+      { levelId: level.id.toString(), title: level.title },
+      "Quiz level created successfully",
+    );
+
+    return {
+      id: level.id.toString(),
+      quizId: level.quizId.toString(),
+      title: level.title,
+      levelOrder: level.levelOrder,
+      createdAt: level.createdAt.toISOString(),
+      updatedAt: level.updatedAt.toISOString(),
+    };
+  }
+
+  static async updateQuizLevel(
+    levelId: bigint,
+    data: UpdateQuizLevelInput,
+    log: Logger,
+  ) {
+    log.debug({ levelId: levelId.toString() }, "Updating quiz level");
+
+    const level = await prisma.quizLevel.update({
+      where: { id: levelId },
+      data: {
+        title: data.title,
+        levelOrder: data.levelOrder,
+      },
+      select: SAFE_LEVEL_SELECT,
+    });
+
+    log.info(
+      { levelId: level.id.toString(), title: level.title },
+      "Quiz level updated successfully",
+    );
+
+    return {
+      id: level.id.toString(),
+      quizId: level.quizId.toString(),
+      title: level.title,
+      levelOrder: level.levelOrder,
+      createdAt: level.createdAt.toISOString(),
+      updatedAt: level.updatedAt.toISOString(),
+    };
+  }
+
+  // ==========================================
+  // 5. DELETE A QUIZ LEVEL
+  // ==========================================
+  static async deleteQuizLevel(levelId: bigint, log: Logger) {
+    log.debug({ levelId: levelId.toString() }, "Deleting quiz level");
+
+    const level = await prisma.quizLevel.delete({
+      where: { id: levelId },
+      select: { id: true },
+    });
+
+    log.info(
+      { levelId: level.id.toString() },
+      "Quiz level deleted successfully",
+    );
+
+    return {
+      id: level.id.toString(),
     };
   }
 }
