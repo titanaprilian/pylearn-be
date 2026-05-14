@@ -1,11 +1,14 @@
 import { z } from "zod";
 
 export const GetQuizzesQuerySchema = z.object({
-  levelId: z.string().describe("Required MaterialLevel ID"),
+  materialId: z
+    .string()
+    .min(1, "Material ID is required")
+    .describe("Required Material ID"),
 });
 
 export const CreateQuizSchema = z.object({
-  levelId: z.string().min(1, "MaterialLevel ID is required"),
+  materialId: z.string().min(1, "Material ID is required"),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   startTime: z.string().datetime().optional(),

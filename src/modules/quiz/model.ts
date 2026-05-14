@@ -1,11 +1,15 @@
 import { z } from "zod";
 import { createErrorSchema, createResponseSchema } from "@/libs/response";
 
+export const QuizLevelSafeSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  levelOrder: z.number().int(),
+});
+
 export const QuizSafe = z.object({
   id: z.string(),
-  materialLevelId: z.string(),
   materialId: z.string(),
-  level: z.string(),
   material: z.string(),
   title: z.string(),
   description: z.string().nullable(),
@@ -18,7 +22,7 @@ export const QuizSafe = z.object({
 
 export const QuizCreateSafe = z.object({
   id: z.string(),
-  materialLevelId: z.string(),
+  materialId: z.string(),
   title: z.string(),
   description: z.string().nullable(),
   startTime: z.string().datetime().nullable(),
@@ -92,8 +96,6 @@ export const QuizModel = {
   createKeywordResult: createResponseSchema(QuestionKeywordSafe),
   updateKeywordResult: createResponseSchema(QuestionKeywordSafe),
   deleteKeywordResult: createResponseSchema(QuizDeleteSafe),
-
-  groupedQuestions: createResponseSchema(z.array(GroupedMaterialLevel)),
 
   error: createErrorSchema(z.null()),
   validationError: createErrorSchema(

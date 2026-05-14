@@ -13,7 +13,7 @@ import { Prisma } from "@generated/prisma";
 
 export const SAFE_QUIZ_SELECT = {
   id: true,
-  materialLevelId: true,
+  materialId: true,
   title: true,
   description: true,
   startTime: true,
@@ -21,44 +21,47 @@ export const SAFE_QUIZ_SELECT = {
   isPublished: true,
   createdAt: true,
   updatedAt: true,
-  materialLevel: {
+  // Fetching the parent material directly
+  material: {
     select: {
       id: true,
       title: true,
-      material: {
-        select: {
-          id: true,
-          title: true,
-        },
-      },
+    },
+  },
+  levels: {
+    select: {
+      id: true,
+      title: true,
+      levelOrder: true,
+    },
+    orderBy: {
+      levelOrder: "asc",
     },
   },
 } as const;
 
 export abstract class QuizService {
-  static async getQuizzes(levelId: bigint, log: Logger) {
+  static async getQuizzes(materialId: bigint, log: Logger) {
     log.debug(
-      { materialLevelId: levelId.toString() },
-      "Fetching quizzes for level",
+      { materialId: materialId.toString() },
+      "Fetching quizzes for material",
     );
 
     const quizzes = await prisma.quiz.findMany({
-      where: { materialLevelId: levelId },
+      where: { materialId: materialId },
       select: SAFE_QUIZ_SELECT,
       orderBy: { createdAt: "desc" },
     });
 
     log.info(
-      { materialLevelId: levelId.toString(), count: quizzes.length },
+      { materialId: materialId.toString(), count: quizzes.length },
       "Quizzes retrieved successfully",
     );
 
     return quizzes.map((quiz) => ({
       id: quiz.id.toString(),
-      materialLevelId: quiz.materialLevelId.toString(),
-      materialId: quiz.materialLevel.material.id.toString(),
-      level: quiz.materialLevel.title,
-      material: quiz.materialLevel.material.title,
+      materialId: quiz.materialId.toString(),
+      material: quiz.material.title,
       title: quiz.title,
       description: quiz.description ?? null,
       startTime: quiz.startTime?.toISOString() ?? null,
@@ -89,10 +92,8 @@ export abstract class QuizService {
 
     return {
       id: quiz.id.toString(),
-      materialLevelId: quiz.materialLevelId.toString(),
-      materialId: quiz.materialLevel.material.id.toString(),
-      level: quiz.materialLevel.title,
-      material: quiz.materialLevel.material.title,
+      materialId: quiz.materialId.toString(),
+      material: quiz.material.title,
       title: quiz.title,
       description: quiz.description ?? null,
       startTime: quiz.startTime?.toISOString() ?? null,
@@ -100,13 +101,19 @@ export abstract class QuizService {
       isPublished: quiz.isPublished,
       createdAt: quiz.createdAt.toISOString(),
       updatedAt: quiz.updatedAt.toISOString(),
+
+      levels: quiz.levels.map((level) => ({
+        id: level.id.toString(),
+        title: level.title,
+        levelOrder: level.levelOrder,
+      })),
     };
   }
 
   static async createQuiz(data: CreateQuizInput, log: Logger) {
-    const levelId = BigInt(data.levelId);
+    const materialId = BigInt(data.materialId);
     log.debug(
-      { materialLevelId: levelId.toString(), title: data.title },
+      { materialId: materialId.toString(), title: data.title },
       "Creating new quiz",
     );
 
@@ -120,7 +127,7 @@ export abstract class QuizService {
 
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId: levelId,
+        materialId: materialId,
         title: data.title,
         description: data.description,
         startTime: data.startTime ? new Date(data.startTime) : null,
@@ -129,7 +136,7 @@ export abstract class QuizService {
       },
       select: {
         id: true,
-        materialLevelId: true,
+        materialId: true, // Updated selection
         title: true,
         description: true,
         startTime: true,
@@ -147,7 +154,7 @@ export abstract class QuizService {
 
     return {
       id: quiz.id.toString(),
-      materialLevelId: quiz.materialLevelId.toString(),
+      materialId: quiz.materialId.toString(), // Updated field
       title: quiz.title,
       description: quiz.description ?? null,
       startTime: quiz.startTime?.toISOString() ?? null,
@@ -193,7 +200,7 @@ export abstract class QuizService {
       },
       select: {
         id: true,
-        materialLevelId: true,
+        materialId: true, // Updated selection from materialLevelId
         title: true,
         description: true,
         startTime: true,
@@ -201,6 +208,14 @@ export abstract class QuizService {
         isPublished: true,
         createdAt: true,
         updatedAt: true,
+        levels: {
+          // Added to keep the return payload consistent
+          select: {
+            id: true,
+            title: true,
+            levelOrder: true,
+          },
+        },
       },
     });
 
@@ -211,7 +226,7 @@ export abstract class QuizService {
 
     return {
       id: quiz.id.toString(),
-      materialLevelId: quiz.materialLevelId.toString(),
+      materialId: quiz.materialId.toString(), // Updated field
       title: quiz.title,
       description: quiz.description ?? null,
       startTime: quiz.startTime?.toISOString() ?? null,
@@ -219,6 +234,11 @@ export abstract class QuizService {
       isPublished: quiz.isPublished,
       createdAt: quiz.createdAt.toISOString(),
       updatedAt: quiz.updatedAt.toISOString(),
+      levels: quiz.levels.map((level) => ({
+        id: level.id.toString(),
+        title: level.title,
+        levelOrder: level.levelOrder,
+      })),
     };
   }
 
@@ -406,46 +426,6 @@ export abstract class QuizQuestionService {
       );
       return { id: questionId.toString() };
     });
-  }
-
-  static async getGroupedQuestionsByMaterial(materialId: bigint, log: Logger) {
-    log.debug(
-      { materialId: materialId.toString() },
-      "Fetching grouped questions for material",
-    );
-
-    const materialLevels = await prisma.materialLevel.findMany({
-      where: { materialId },
-      include: {
-        quizzes: {
-          include: {
-            questions: true,
-          },
-          orderBy: { createdAt: "asc" },
-        },
-      },
-      orderBy: { levelOrder: "asc" },
-    });
-
-    log.info(
-      { materialId: materialId.toString(), levelsCount: materialLevels.length },
-      "Grouped questions retrieved successfully",
-    );
-
-    return materialLevels.map((level) => ({
-      levelId: level.id.toString(),
-      levelTitle: level.title,
-      quizzes: level.quizzes.map((quiz) => ({
-        quizId: quiz.id.toString(),
-        quizTitle: quiz.title,
-        questions: quiz.questions.map((q) => ({
-          id: q.id.toString(),
-          questionText: q.questionText,
-          maxScore: q.maxScore,
-          questionOrder: q.questionOrder,
-        })),
-      })),
-    }));
   }
 }
 

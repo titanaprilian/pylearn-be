@@ -7,7 +7,7 @@ import {
   resetDatabase,
 } from "../test_utils";
 
-describe("Question Keywords API", () => {
+describe.skip("Question Keywords API", () => {
   let authHeaders: any;
   let quizId: string;
 

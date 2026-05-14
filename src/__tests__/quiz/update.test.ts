@@ -23,13 +23,11 @@ describe("PATCH /quizzes/:id", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
+    // Updated: Seed directly under materialId
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId: level.id,
+        materialId: material.id,
         title: "Original Title",
         isPublished: false,
       },
@@ -62,13 +60,11 @@ describe("PATCH /quizzes/:id", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
+    // Updated: Seed directly under materialId
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId: level.id,
+        materialId: material.id,
         title: "Test Quiz",
         startTime: new Date("2025-01-01T00:00:00Z"),
         endTime: new Date("2025-01-02T00:00:00Z"),
@@ -105,13 +101,11 @@ describe("PATCH /quizzes/:id", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
+    // Updated: Seed directly under materialId
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId: level.id,
+        materialId: material.id,
         title: "Test Quiz",
         startTime: new Date("2025-01-01T00:00:00Z"),
         endTime: new Date("2025-01-02T00:00:00Z"),
@@ -170,13 +164,11 @@ describe("PATCH /quizzes/:id", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
+    // Updated: Seed directly under materialId
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId: level.id,
+        materialId: material.id,
         title: "Test Quiz",
       },
     });

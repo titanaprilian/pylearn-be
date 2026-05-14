@@ -23,16 +23,21 @@ describe("GET /quizzes/:id", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
+    // Updated: Seed the test quiz directly under the material
+    // and optionally attach a quiz level to mock the relationship
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId: level.id,
+        materialId: material.id, // Updated field name
         title: "Test Quiz",
         description: "Test description",
         isPublished: true,
+        levels: {
+          create: {
+            title: "Level 1",
+            levelOrder: 1,
+          },
+        },
       },
     });
 
@@ -49,7 +54,6 @@ describe("GET /quizzes/:id", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.title).toBe("Test Quiz");
-    expect(json.data.level).toBe("Level 1");
     expect(json.data.material).toBe(material.title);
   });
 
@@ -81,13 +85,11 @@ describe("GET /quizzes/:id", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
+    // Updated: Seed the test quiz directly under the material
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId: level.id,
+        materialId: material.id, // Updated field name
         title: "Test Quiz",
       },
     });

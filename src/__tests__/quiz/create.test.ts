@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { app } from "@/server";
-import { prisma } from "@/libs/prisma";
 import {
   resetDatabase,
   createAuthenticatedUser,
@@ -22,10 +21,8 @@ describe("POST /quizzes", () => {
       roleId: role.id,
     });
 
+    // Directly use the material without creating an intermediary material level
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
     const res = await app.handle(
       new Request(`http://localhost/quizzes`, {
@@ -36,17 +33,18 @@ describe("POST /quizzes", () => {
           "x-forwarded-for": randomIp(),
         },
         body: JSON.stringify({
-          levelId: level.id.toString(),
+          materialId: material.id.toString(),
           title: "New Quiz",
           description: "Test description",
         }),
       }),
     );
 
-    expect(res.status).toBe(201);
     const json = await res.json();
+    expect(res.status).toBe(201);
     expect(json.data.title).toBe("New Quiz");
     expect(json.data.description).toBe("Test description");
+    expect(json.data.materialId).toBe(material.id.toString());
   });
 
   it("should create quiz with timing constraints", async () => {
@@ -58,9 +56,6 @@ describe("POST /quizzes", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
     const res = await app.handle(
       new Request(`http://localhost/quizzes`, {
@@ -71,7 +66,7 @@ describe("POST /quizzes", () => {
           "x-forwarded-for": randomIp(),
         },
         body: JSON.stringify({
-          levelId: level.id.toString(),
+          materialId: material.id.toString(), // Updated field name
           title: "Timed Quiz",
           startTime: "2025-01-01T00:00:00Z",
           endTime: "2025-01-02T00:00:00Z",
@@ -96,9 +91,6 @@ describe("POST /quizzes", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
     const res = await app.handle(
       new Request(`http://localhost/quizzes`, {
@@ -109,7 +101,7 @@ describe("POST /quizzes", () => {
           "x-forwarded-for": randomIp(),
         },
         body: JSON.stringify({
-          levelId: level.id.toString(),
+          materialId: material.id.toString(), // Updated field name
           title: "Test Quiz",
         }),
       }),

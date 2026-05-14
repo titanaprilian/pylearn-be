@@ -16,7 +16,6 @@ import {
   UpdateKeywordSchema,
   GetQuizzesQuerySchema,
   GetQuestionsQuerySchema,
-  GetGroupedQuestionsQuerySchema,
   GetKeywordsQuerySchema,
 } from "./schema";
 import { successResponse, errorResponse } from "@/libs/response";
@@ -32,8 +31,8 @@ const protectedQuizzes = createProtectedApp()
   .get(
     "/",
     async ({ query, set, log, locale }) => {
-      const levelId = BigInt(query.levelId);
-      const quizzes = await QuizService.getQuizzes(levelId, log);
+      const materialId = BigInt(query.materialId);
+      const quizzes = await QuizService.getQuizzes(materialId, log);
       return successResponse(
         set,
         quizzes,
@@ -169,32 +168,6 @@ const protectedQuizzes = createProtectedApp()
       query: GetQuestionsQuerySchema,
       response: {
         200: QuizModel.questions,
-        500: QuizModel.error,
-      },
-      beforeHandle: hasPermission(FEATURE_NAME, "read"),
-    },
-  )
-  .get(
-    "/questions/grouped",
-    async ({ query, set, log, locale }) => {
-      const materialId = BigInt(query.materialId);
-      const grouped = await QuizQuestionService.getGroupedQuestionsByMaterial(
-        materialId,
-        log,
-      );
-      return successResponse(
-        set,
-        grouped,
-        { key: "quiz.questionListSuccess" },
-        200,
-        undefined,
-        locale,
-      );
-    },
-    {
-      query: GetGroupedQuestionsQuerySchema,
-      response: {
-        200: QuizModel.groupedQuestions,
         500: QuizModel.error,
       },
       beforeHandle: hasPermission(FEATURE_NAME, "read"),

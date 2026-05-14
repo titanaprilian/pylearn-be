@@ -14,7 +14,7 @@ describe("GET /quizzes", () => {
     await resetDatabase();
   });
 
-  it("should return quizzes for a level with level and material info", async () => {
+  it("should return quizzes for a material with nested level and material info", async () => {
     const role = await createTestRoleWithPermissions("QuizReaderRole", [
       { featureName: "quiz_management", action: "read" },
     ]);
@@ -23,23 +23,27 @@ describe("GET /quizzes", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
+    // Seed a quiz directly under the material with a nested quiz level
     await prisma.quiz.create({
       data: {
-        materialLevelId: level.id,
+        materialId: material.id, // Updated relationship
         title: "Quiz 1",
         description: "Test quiz",
         isPublished: true,
+        levels: {
+          create: {
+            title: "Level 1",
+            levelOrder: 1,
+          },
+        },
       },
     });
 
     const res = await app.handle(
       new Request(
-        // Updated URL: Flattened path using query parameter
-        `http://localhost/quizzes?levelId=${level.id.toString()}`,
+        // Updated query parameter to focus on the parent material
+        `http://localhost/quizzes?materialId=${material.id.toString()}`,
         {
           method: "GET",
           headers: {
@@ -50,11 +54,10 @@ describe("GET /quizzes", () => {
       ),
     );
 
-    expect(res.status).toBe(200);
     const json = await res.json();
+    expect(res.status).toBe(200);
     expect(json.data).toHaveLength(1);
     expect(json.data[0].title).toBe("Quiz 1");
-    expect(json.data[0].level).toBe("Level 1");
     expect(json.data[0].material).toBe(material.title);
   });
 
@@ -67,14 +70,11 @@ describe("GET /quizzes", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
     const res = await app.handle(
       new Request(
-        // Updated URL: Flattened path using query parameter
-        `http://localhost/quizzes?levelId=${level.id.toString()}`,
+        // Updated query parameter
+        `http://localhost/quizzes?materialId=${material.id.toString()}`,
         {
           method: "GET",
           headers: {
@@ -97,14 +97,11 @@ describe("GET /quizzes", () => {
     const { user } = await createAuthenticatedUser({ roleId: role.id });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
     const res = await app.handle(
       new Request(
-        // Updated URL: Flattened path using query parameter
-        `http://localhost/quizzes?levelId=${level.id.toString()}`,
+        // Updated query parameter
+        `http://localhost/quizzes?materialId=${material.id.toString()}`,
         {
           method: "GET",
         },
@@ -121,14 +118,11 @@ describe("GET /quizzes", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
     const res = await app.handle(
       new Request(
-        // Updated URL: Flattened path using query parameter
-        `http://localhost/quizzes?levelId=${level.id.toString()}`,
+        // Updated query parameter to materialId
+        `http://localhost/quizzes?materialId=${material.id.toString()}`,
         {
           method: "GET",
           headers: {

@@ -23,13 +23,11 @@ describe("DELETE /quizzes/:id", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
+    // Updated: Seed the test quiz directly under the material
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId: level.id,
+        materialId: material.id, // Updated field name
         title: "Test Quiz",
       },
     });
@@ -82,13 +80,11 @@ describe("DELETE /quizzes/:id", () => {
     });
 
     const material = await createTestMaterial(user.id);
-    const level = await prisma.materialLevel.create({
-      data: { materialId: material.id, title: "Level 1", levelOrder: 1 },
-    });
 
+    // Updated: Seed the test quiz directly under the material
     const quiz = await prisma.quiz.create({
       data: {
-        materialLevelId: level.id,
+        materialId: material.id, // Updated field name
         title: "Test Quiz",
       },
     });
