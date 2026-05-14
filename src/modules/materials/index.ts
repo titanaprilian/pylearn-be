@@ -2,6 +2,7 @@ import { MaterialService, MaterialLevelService } from "./service";
 import { MaterialModel } from "./model";
 import {
   CreateMaterialSchema,
+  CreateMaterialMeSchema,
   GetMaterialsQuerySchema,
   UpdateMaterialSchema,
   MaterialParamSchema,
@@ -77,6 +78,29 @@ const protectedMaterials = createProtectedApp()
       body: CreateMaterialSchema,
       response: {
         201: MaterialModel.createResult,
+        400: MaterialModel.validationError,
+        500: MaterialModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "create"),
+    },
+  )
+  .post(
+    "/me",
+    async ({ body, user, set, log, locale }) => {
+      const data = await MaterialService.createMaterialMe(body, user.id, log);
+      return successResponse(
+        set,
+        data,
+        { key: "materials.createSuccess" },
+        201,
+        undefined,
+        locale,
+      );
+    },
+    {
+      body: CreateMaterialMeSchema,
+      response: {
+        201: MaterialModel.createMeResult,
         400: MaterialModel.validationError,
         500: MaterialModel.error,
       },

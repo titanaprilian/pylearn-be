@@ -14,6 +14,10 @@ export const CreateMaterialSchema = z.object({
   isPublished: z.boolean().default(false),
 });
 
+export const CreateMaterialMeSchema = CreateMaterialSchema.omit({
+  lecturerId: true,
+});
+
 export const UpdateMaterialSchema = z
   .object({
     lecturerId: z.string().optional(),
@@ -56,6 +60,7 @@ export const LevelParamSchema = z.object({
 });
 
 export type CreateMaterialInput = z.infer<typeof CreateMaterialSchema>;
+export type CreateMaterialMeInput = z.infer<typeof CreateMaterialMeSchema>;
 export type UpdateMaterialInput = z.infer<typeof UpdateMaterialSchema>;
 export type CreateLevelInput = z.infer<typeof CreateLevelSchema>;
 export type UpdateLevelInput = z.infer<typeof UpdateLevelSchema>;
