@@ -1,16 +1,19 @@
-import { QuizService } from "./service";
+import { QuizService, QuizQuestionService } from "./service";
 import { QuizModel } from "./model";
 import {
   CreateQuizSchema,
   UpdateQuizSchema,
   QuizParamSchema,
   QuizListParamSchema,
+  CreateQuizQuestionSchema,
+  UpdateQuizQuestionSchema,
+  QuestionParamSchema,
 } from "./schema";
 import { successResponse, errorResponse } from "@/libs/response";
 import { createBaseApp, createProtectedApp } from "@/libs/base";
 import { Prisma } from "@generated/prisma";
 import { hasPermission } from "@/middleware/permission";
-import { InvalidTimeRangeError } from "./error";
+import { InvalidTimeRangeError, CannotDeleteQuestionError } from "./error";
 
 const FEATURE_NAME = "quiz_management";
 
@@ -145,6 +148,121 @@ const protectedQuizzes = createProtectedApp()
       beforeHandle: hasPermission(FEATURE_NAME, "delete"),
     },
   )
+
+  // Nested routes for Questions
+  .get(
+    "/:quizId/questions",
+    async ({ params, set, log, locale }) => {
+      const quizId = BigInt(params.quizId);
+      const questions = await QuizQuestionService.getQuestions(quizId, log);
+      return successResponse(
+        set,
+        questions,
+        { key: "quiz.questionListSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      params: QuizParamSchema,
+      response: {
+        200: QuizModel.questions,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "read"),
+    },
+  )
+  .post(
+    "/:quizId/questions",
+    async ({ params, body, set, log, locale }) => {
+      const quizId = BigInt(params.quizId);
+      const question = await QuizQuestionService.createQuestion(
+        quizId,
+        body,
+        log,
+      );
+      return successResponse(
+        set,
+        question,
+        { key: "quiz.questionCreateSuccess" },
+        201,
+        undefined,
+        locale,
+      );
+    },
+    {
+      params: QuizParamSchema,
+      body: CreateQuizQuestionSchema,
+      response: {
+        201: QuizModel.createQuestionResult,
+        400: QuizModel.validationError,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "create"),
+    },
+  )
+  .patch(
+    "/:quizId/questions/:questionId",
+    async ({ params, body, set, log, locale }) => {
+      const quizId = BigInt(params.quizId);
+      const questionId = BigInt(params.questionId);
+      const question = await QuizQuestionService.updateQuestion(
+        quizId,
+        questionId,
+        body,
+        log,
+      );
+      return successResponse(
+        set,
+        question,
+        { key: "quiz.questionUpdateSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      params: QuestionParamSchema,
+      body: UpdateQuizQuestionSchema,
+      response: {
+        200: QuizModel.updateQuestionResult,
+        400: QuizModel.validationError,
+        404: QuizModel.error,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "update"),
+    },
+  )
+  .delete(
+    "/:quizId/questions/:questionId",
+    async ({ params, set, log, locale }) => {
+      const quizId = BigInt(params.quizId);
+      const questionId = BigInt(params.questionId);
+      const result = await QuizQuestionService.deleteQuestion(
+        quizId,
+        questionId,
+        log,
+      );
+      return successResponse(
+        set,
+        result,
+        { key: "quiz.questionDeleteSuccess" },
+        200,
+        undefined,
+        locale,
+      );
+    },
+    {
+      params: QuestionParamSchema,
+      response: {
+        200: QuizModel.deleteQuestionResult,
+        404: QuizModel.error,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE_NAME, "delete"),
+    },
+  )
   .onError(({ error, set, locale }) => {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -154,6 +272,10 @@ const protectedQuizzes = createProtectedApp()
     }
 
     if (error instanceof InvalidTimeRangeError) {
+      return errorResponse(set, 400, error.message, null, locale);
+    }
+
+    if (error instanceof CannotDeleteQuestionError) {
       return errorResponse(set, 400, error.message, null, locale);
     }
 

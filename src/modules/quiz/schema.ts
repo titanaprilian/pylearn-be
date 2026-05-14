@@ -27,5 +27,24 @@ export const QuizParamSchema = z.object({
   quizId: z.string(),
 });
 
+export const CreateQuizQuestionSchema = z.object({
+  questionText: z.string().min(1, "Question text is required"),
+  maxScore: z.number().int().min(0).optional().default(100),
+});
+
+export const UpdateQuizQuestionSchema = z.object({
+  questionText: z.string().min(1).optional(),
+  maxScore: z.number().int().min(0).optional(),
+});
+
+export const QuestionParamSchema = z.object({
+  id: z.string(),
+  levelId: z.string(),
+  quizId: z.string(),
+  questionId: z.string(),
+});
+
 export type CreateQuizInput = z.infer<typeof CreateQuizSchema>;
 export type UpdateQuizInput = z.infer<typeof UpdateQuizSchema>;
+export type CreateQuizQuestionInput = z.infer<typeof CreateQuizQuestionSchema>;
+export type UpdateQuizQuestionInput = z.infer<typeof UpdateQuizQuestionSchema>;

@@ -64,16 +64,30 @@ model MaterialLevel {
 }
 
 model Quiz {
-  id              BigInt        @id @default(autoincrement())
+  id              BigInt          @id @default(autoincrement())
   materialLevelId BigInt
-  materialLevel   MaterialLevel @relation(fields: [materialLevelId], references: [id], onDelete: Cascade)
+  materialLevel   MaterialLevel   @relation(fields: [materialLevelId], references: [id], onDelete: Cascade)
   title           String
-  description     String?       @db.Text
+  description     String?         @db.Text
   startTime       DateTime?
   endTime         DateTime?
-  isPublished     Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  isPublished     Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  questions       QuizQuestion[]
+}
+
+model QuizQuestion {
+  id            BigInt   @id @default(autoincrement())
+  quizId        BigInt
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionText  String   @db.Text
+  maxScore      Int      @default(100)
+  questionOrder Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([quizId, questionOrder])
 }
 
 model RefreshToken {
