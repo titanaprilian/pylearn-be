@@ -34,47 +34,49 @@ model User {
 }
 
 model Material {
-  id           BigInt          @id @default(autoincrement())
+  id           BigInt    @id @default(autoincrement())
   lecturerId   String
-  lecturer     User            @relation(fields: [lecturerId], references: [id])
+  lecturer     User      @relation(fields: [lecturerId], references: [id])
   title        String
   description  String?
   materialType String
-  content      String?         @db.Text
-  sourceUrl    String?         @db.Text
+  content      String?   @db.Text
+  sourceUrl    String?   @db.Text
   iconName     String?
-  isPublished  Boolean         @default(false)
+  isPublished  Boolean   @default(false)
   publishedAt  DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  levels       MaterialLevel[]
-}
-
-model MaterialLevel {
-  id          BigInt    @id @default(autoincrement())
-  materialId  BigInt
-  material    Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
-  title       String
-  levelOrder  Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  quizzes     Quiz[]
-
-  @@unique([materialId, levelOrder])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  quizzes      Quiz[]
 }
 
 model Quiz {
-  id              BigInt          @id @default(autoincrement())
-  materialLevelId BigInt
-  materialLevel   MaterialLevel   @relation(fields: [materialLevelId], references: [id], onDelete: Cascade)
-  title           String
-  description     String?         @db.Text
-  startTime       DateTime?
-  endTime         DateTime?
-  isPublished     Boolean         @default(false)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  questions       QuizQuestion[]
+  id           BigInt         @id @default(autoincrement())
+  materialId   BigInt
+  material     Material       @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?        @db.Text
+  startTime    DateTime?
+  endTime      DateTime?
+  isPublished  Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  levels       QuizLevel[]
+  QuizQuestion QuizQuestion[]
+}
+
+model QuizLevel {
+  id         BigInt   @id @default(autoincrement())
+  quizId     BigInt
+  quiz       Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  title      String
+  levelOrder Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  questions QuizQuestion[]
+
+  @@unique([quizId, levelOrder])
 }
 
 model QuizQuestion {
@@ -88,18 +90,20 @@ model QuizQuestion {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   keywords      QuestionKeyword[]
+  QuizLevel     QuizLevel?        @relation(fields: [quizLevelId], references: [id])
+  quizLevelId   BigInt?
 
   @@unique([quizId, questionOrder])
 }
 
 model QuestionKeyword {
-  id            BigInt        @id @default(autoincrement())
+  id            BigInt       @id @default(autoincrement())
   questionId    BigInt
   question      QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   blankOrder    Int
-  correctAnswer String        @db.Text
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  correctAnswer String       @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@unique([questionId, blankOrder])
 }

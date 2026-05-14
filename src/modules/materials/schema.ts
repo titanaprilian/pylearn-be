@@ -46,21 +46,6 @@ export const GetMaterialsQuerySchema = PaginationSchema.extend({
     .optional(),
 });
 
-export const CreateLevelSchema = z.object({
-  title: z.string().min(1).max(200),
-});
-
-export const UpdateLevelSchema = z.object({
-  title: z.string().min(1).max(200),
-});
-
-export const LevelParamSchema = z.object({
-  id: z.string(),
-  levelId: z.string(),
-});
-
 export type CreateMaterialInput = z.infer<typeof CreateMaterialSchema>;
 export type CreateMaterialMeInput = z.infer<typeof CreateMaterialMeSchema>;
 export type UpdateMaterialInput = z.infer<typeof UpdateMaterialSchema>;
-export type CreateLevelInput = z.infer<typeof CreateLevelSchema>;
-export type UpdateLevelInput = z.infer<typeof UpdateLevelSchema>;

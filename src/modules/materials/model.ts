@@ -20,15 +20,6 @@ export const MaterialSafe = z.object({
   updatedAt: z.string().datetime(),
 });
 
-export const MaterialLevelSafe = z.object({
-  id: z.string(),
-  materialId: z.string(),
-  title: z.string(),
-  levelOrder: z.number(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
-
 export const MaterialModel = {
   material: createResponseSchema(MaterialSafe),
   materials: createPaginatedResponseSchema(z.array(MaterialSafe)),
@@ -36,12 +27,6 @@ export const MaterialModel = {
   createMeResult: createResponseSchema(MaterialSafe),
   updateResult: createResponseSchema(MaterialSafe),
   deleteResult: createResponseSchema(MaterialSafe),
-
-  level: createResponseSchema(MaterialLevelSafe),
-  levels: createResponseSchema(z.array(MaterialLevelSafe)),
-  createLevelResult: createResponseSchema(MaterialLevelSafe),
-  updateLevelResult: createResponseSchema(MaterialLevelSafe),
-  deleteLevelResult: createResponseSchema(MaterialLevelSafe),
 
   error: createErrorSchema(z.null()),
   validationError: createErrorSchema(
@@ -60,9 +45,4 @@ export type MaterialModelType = {
   createResult: z.infer<typeof MaterialModel.createResult>;
   updateResult: z.infer<typeof MaterialModel.updateResult>;
   deleteResult: z.infer<typeof MaterialModel.deleteResult>;
-  level: z.infer<typeof MaterialModel.level>;
-  levels: z.infer<typeof MaterialModel.levels>;
-  createLevelResult: z.infer<typeof MaterialModel.createLevelResult>;
-  updateLevelResult: z.infer<typeof MaterialModel.updateLevelResult>;
-  deleteLevelResult: z.infer<typeof MaterialModel.deleteLevelResult>;
 };

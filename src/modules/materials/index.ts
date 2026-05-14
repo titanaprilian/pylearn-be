@@ -1,4 +1,4 @@
-import { MaterialService, MaterialLevelService } from "./service";
+import { MaterialService } from "./service";
 import { MaterialModel } from "./model";
 import {
   CreateMaterialSchema,
@@ -6,15 +6,11 @@ import {
   GetMaterialsQuerySchema,
   UpdateMaterialSchema,
   MaterialParamSchema,
-  CreateLevelSchema,
-  UpdateLevelSchema,
-  LevelParamSchema,
 } from "./schema";
 import { successResponse, errorResponse } from "@/libs/response";
 import { createBaseApp, createProtectedApp } from "@/libs/base";
 import { Prisma } from "@generated/prisma";
 import { hasPermission } from "@/middleware/permission";
-import { CannotDeleteLevelError } from "./error";
 
 const FEATURE_NAME = "material_management";
 
@@ -181,121 +177,6 @@ const protectedMaterials = createProtectedApp()
       beforeHandle: hasPermission(FEATURE_NAME, "delete"),
     },
   )
-  .get(
-    "/:id/levels",
-    async ({ params, set, log, locale }) => {
-      const materialId = BigInt(params.id);
-      const levels = await MaterialLevelService.getLevels(materialId, log);
-      return successResponse(
-        set,
-        levels,
-        { key: "materials.levelListSuccess" },
-        200,
-        undefined,
-        locale,
-      );
-    },
-    {
-      params: MaterialParamSchema,
-      response: {
-        200: MaterialModel.levels,
-        404: MaterialModel.error,
-        500: MaterialModel.error,
-      },
-      beforeHandle: hasPermission(FEATURE_NAME, "read"),
-    },
-  )
-  .post(
-    "/:id/levels",
-    async ({ params, body, set, log, locale }) => {
-      const materialId = BigInt(params.id);
-      const level = await MaterialLevelService.createLevel(
-        materialId,
-        body,
-        log,
-      );
-      return successResponse(
-        set,
-        level,
-        { key: "materials.levelCreateSuccess" },
-        201,
-        undefined,
-        locale,
-      );
-    },
-    {
-      params: MaterialParamSchema,
-      body: CreateLevelSchema,
-      response: {
-        201: MaterialModel.createLevelResult,
-        400: MaterialModel.validationError,
-        404: MaterialModel.error,
-        500: MaterialModel.error,
-      },
-      beforeHandle: hasPermission(FEATURE_NAME, "create"),
-    },
-  )
-  .patch(
-    "/:id/levels/:levelId",
-    async ({ params, body, set, log, locale }) => {
-      const materialId = BigInt(params.id);
-      const levelId = BigInt(params.levelId);
-      const level = await MaterialLevelService.updateLevel(
-        materialId,
-        levelId,
-        body,
-        log,
-      );
-      return successResponse(
-        set,
-        level,
-        { key: "materials.levelUpdateSuccess" },
-        200,
-        undefined,
-        locale,
-      );
-    },
-    {
-      params: LevelParamSchema,
-      body: UpdateLevelSchema,
-      response: {
-        200: MaterialModel.updateLevelResult,
-        400: MaterialModel.validationError,
-        404: MaterialModel.error,
-        500: MaterialModel.error,
-      },
-      beforeHandle: hasPermission(FEATURE_NAME, "update"),
-    },
-  )
-  .delete(
-    "/:id/levels/:levelId",
-    async ({ params, set, log, locale }) => {
-      const materialId = BigInt(params.id);
-      const levelId = BigInt(params.levelId);
-      const level = await MaterialLevelService.deleteLevel(
-        materialId,
-        levelId,
-        log,
-      );
-      return successResponse(
-        set,
-        level,
-        { key: "materials.levelDeleteSuccess" },
-        200,
-        undefined,
-        locale,
-      );
-    },
-    {
-      params: LevelParamSchema,
-      response: {
-        200: MaterialModel.deleteLevelResult,
-        404: MaterialModel.error,
-        500: MaterialModel.error,
-      },
-      beforeHandle: hasPermission(FEATURE_NAME, "delete"),
-    },
-  )
   .onError(({ error, set, locale }) => {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -333,13 +214,6 @@ const protectedMaterials = createProtectedApp()
       error.code === "P2025"
     ) {
       return errorResponse(set, 404, { key: "common.notFound" }, null, locale);
-    }
-
-    if (
-      error instanceof CannotDeleteLevelError &&
-      error.message.includes("Cannot delete level")
-    ) {
-      return errorResponse(set, 400, error.message, null, locale);
     }
 
     return;
