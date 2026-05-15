@@ -290,6 +290,25 @@ const questionRoutes = createProtectedApp()
       },
       beforeHandle: hasPermission(FEATURE, "delete"),
     },
+  )
+  .get(
+    "/attempt",
+    async ({ query, set, log, locale }) => {
+      const questions = await QuizQuestionService.getStudentQuestions(
+        BigInt(query.quizLevelId),
+        log,
+      );
+      return ok({ set, locale }, questions, "quiz.questionListSuccess");
+    },
+    {
+      query: GetQuestionsQuerySchema,
+      response: {
+        200: QuizModel.questionsWithoutAnswer,
+        500: QuizModel.error,
+      },
+      // Uses a read action but fits standard candidate authorization roles
+      beforeHandle: hasPermission(FEATURE, "read"),
+    },
   );
 
 const attemptRoutes = createProtectedApp()

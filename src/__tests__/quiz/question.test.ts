@@ -171,6 +171,63 @@ describe("Quiz Questions API", () => {
     });
   });
 
+  describe.only("GET /quizzes/questions/attempt", () => {
+    it("should return questions for a level but strictly exclude answerText", async () => {
+      await prisma.quizQuestion.create({
+        data: {
+          quizLevelId: BigInt(quizLevelId),
+          questionText: "Secret Question?",
+          answerText: "Highly Classified Answer Key",
+          maxScore: 100,
+          questionOrder: 1,
+        },
+      });
+
+      const res = await app.handle(
+        new Request(
+          `http://localhost/quizzes/questions/attempt?quizLevelId=${quizLevelId}`,
+          {
+            method: "GET",
+            headers: authHeaders,
+          },
+        ),
+      );
+
+      const body = await res.json();
+      expect(res.status).toBe(200);
+      expect(body.data.length).toBe(1);
+      expect(body.data[0].questionText).toBe("Secret Question?");
+      expect(body.data[0].maxScore).toBe(100);
+      expect(body.data[0].questionOrder).toBe(1);
+
+      expect(body.data[0].answerText).toBeUndefined();
+    });
+
+    it("should reject when candidate lacks read permission", async () => {
+      const unauthorizedRole = await createTestRoleWithPermissions(
+        "GuestRole",
+        [],
+      );
+      const unauthorizedUser = await createAuthenticatedUser({
+        roleId: unauthorizedRole.id,
+        id: "new-unauthorized-user-id",
+        email: "unauthorized@test.com",
+      });
+
+      const res = await app.handle(
+        new Request(
+          `http://localhost/quizzes/questions/attempt?quizLevelId=${quizLevelId}`,
+          {
+            method: "GET",
+            headers: unauthorizedUser.authHeaders,
+          },
+        ),
+      );
+
+      expect(res.status).toBe(403);
+    });
+  });
+
   // =========================================================================
   // PATCH /quizzes/questions/:id (Update)
   // =========================================================================

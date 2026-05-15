@@ -64,6 +64,14 @@ export const QuizQuestionSafe = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const QuizQuestionWithoutAnswerText = z.object({
+  id: z.string(),
+  quizLevelId: z.string(),
+  questionText: z.string(),
+  maxScore: z.number(),
+  questionOrder: z.number(),
+});
+
 // ==========================================
 // QUIZ ATTEMPT SCHEMAS
 // ==========================================
@@ -137,6 +145,9 @@ export const QuizModel = {
   // Questions
   question: createResponseSchema(QuizQuestionSafe),
   questions: createResponseSchema(z.array(QuizQuestionSafe)),
+  questionsWithoutAnswer: createResponseSchema(
+    z.array(QuizQuestionWithoutAnswerText),
+  ),
   createQuestionResult: createResponseSchema(QuizQuestionSafe),
   updateQuestionResult: createResponseSchema(QuizQuestionSafe),
   deleteQuestionResult: createResponseSchema(QuizDeleteSafe),
@@ -183,6 +194,7 @@ export type QuizModelType = {
   // Questions
   question: z.infer<typeof QuizModel.question>;
   questions: z.infer<typeof QuizModel.questions>;
+  questionsWithoutAnswer: z.infer<typeof QuizModel.questionsWithoutAnswer>;
   createQuestionResult: z.infer<typeof QuizModel.createQuestionResult>;
   updateQuestionResult: z.infer<typeof QuizModel.updateQuestionResult>;
   deleteQuestionResult: z.infer<typeof QuizModel.deleteQuestionResult>;

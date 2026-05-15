@@ -68,6 +68,14 @@ const QUESTION_SELECT = {
   },
 } as const;
 
+export const STUDENT_QUESTION_SELECT = {
+  id: true,
+  quizLevelId: true,
+  questionText: true,
+  maxScore: true,
+  questionOrder: true,
+} as const;
+
 const ATTEMPT_SELECT = {
   id: true,
   quizId: true,
@@ -476,6 +484,34 @@ export abstract class QuizQuestionService {
       );
       return { id: questionId.toString() };
     });
+  }
+
+  static async getStudentQuestions(quizLevelId: bigint, log: Logger) {
+    log.debug(
+      { quizLevelId: quizLevelId.toString() },
+      "Fetching limited question data for student quiz execution context",
+    );
+
+    const questions = await prisma.quizQuestion.findMany({
+      where: { quizLevelId },
+      select: STUDENT_QUESTION_SELECT,
+      orderBy: { questionOrder: "asc" },
+    });
+
+    log.info(
+      { quizLevelId: quizLevelId.toString(), count: questions.length },
+      "Student question data retrieved successfully",
+    );
+
+    // Map fields matching your custom application mapper conventions safely
+    return questions.map((q) => ({
+      id: q.id.toString(),
+      quizLevelId: q.quizLevelId.toString(),
+      questionText: q.questionText,
+      maxScore: q.maxScore,
+      questionOrder: q.questionOrder,
+      answerText: null,
+    }));
   }
 }
 
