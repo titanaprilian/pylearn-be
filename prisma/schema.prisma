@@ -31,6 +31,7 @@ model User {
   materials     Material[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  QuizAttempt   QuizAttempt[]
 }
 
 model Material {
@@ -51,18 +52,18 @@ model Material {
 }
 
 model Quiz {
-  id           BigInt         @id @default(autoincrement())
-  materialId   BigInt
-  material     Material       @relation(fields: [materialId], references: [id], onDelete: Cascade)
-  title        String
-  description  String?        @db.Text
-  startTime    DateTime?
-  endTime      DateTime?
-  isPublished  Boolean        @default(false)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  levels       QuizLevel[]
-  QuizQuestion QuizQuestion[]
+  id          BigInt        @id @default(autoincrement())
+  materialId  BigInt
+  material    Material      @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  title       String
+  description String?       @db.Text
+  startTime   DateTime?
+  endTime     DateTime?
+  isPublished Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  levels      QuizLevel[]
+  QuizAttempt QuizAttempt[]
 }
 
 model QuizLevel {
@@ -80,32 +81,48 @@ model QuizLevel {
 }
 
 model QuizQuestion {
-  id            BigInt            @id @default(autoincrement())
+  id            BigInt       @id @default(autoincrement())
   quizLevelId   BigInt
-  quizLevel     QuizLevel         @relation(fields: [quizLevelId], references: [id], onDelete: Cascade)
-  questionText  String            @db.Text
-  answerText    String            @db.Text
-  maxScore      Int               @default(100)
+  quizLevel     QuizLevel    @relation(fields: [quizLevelId], references: [id], onDelete: Cascade)
+  questionText  String       @db.Text
+  answerText    String       @db.Text
+  maxScore      Int          @default(100)
   questionOrder Int
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  keywords      QuestionKeyword[]
-  Quiz          Quiz?             @relation(fields: [quizId], references: [id])
-  quizId        BigInt?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  QuizAnswer    QuizAnswer[]
 
   @@unique([quizLevelId, questionOrder])
 }
 
-model QuestionKeyword {
-  id            BigInt       @id @default(autoincrement())
-  questionId    BigInt
-  question      QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  blankOrder    Int
-  correctAnswer String       @db.Text
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+model QuizAttempt {
+  id          BigInt       @id @default(autoincrement())
+  quizId      BigInt
+  quiz        Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  startedAt   DateTime     @default(now())
+  submittedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  answers     QuizAnswer[]
 
-  @@unique([questionId, blankOrder])
+  @@unique([quizId, studentId])
+}
+
+model QuizAnswer {
+  id             BigInt       @id @default(autoincrement())
+  quizAttemptId  BigInt
+  quizAttempt    QuizAttempt  @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
+  quizQuestionId BigInt
+  quizQuestion   QuizQuestion @relation(fields: [quizQuestionId], references: [id], onDelete: Cascade)
+  answerText     String       @db.Text
+  isCorrect      Boolean?
+  answeredAt     DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([quizAttemptId, quizQuestionId])
 }
 
 model RefreshToken {

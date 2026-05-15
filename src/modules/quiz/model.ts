@@ -27,7 +27,7 @@ export const QuizSafe = z.object({
   isPublished: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
-  levels: z.array(QuizLevelSafe), // Added the nested levels array
+  levels: z.array(QuizLevelSafe),
 });
 
 export const QuizCreateSafe = z.object({
@@ -40,7 +40,7 @@ export const QuizCreateSafe = z.object({
   isPublished: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
-  levels: z.array(QuizLevelSafe), // Added the nested levels array
+  levels: z.array(QuizLevelSafe),
 });
 
 export const QuizDeleteSafe = z.object({
@@ -48,7 +48,7 @@ export const QuizDeleteSafe = z.object({
 });
 
 // ==========================================
-// QUESTION & KEYWORD SCHEMAS
+// QUESTION SCHEMAS
 // ==========================================
 export const QuizQuestionSafe = z.object({
   id: z.string(),
@@ -64,13 +64,32 @@ export const QuizQuestionSafe = z.object({
   updatedAt: z.string().datetime(),
 });
 
-export const QuestionKeywordSafe = z.object({
+// ==========================================
+// QUIZ ATTEMPT SCHEMAS
+// ==========================================
+export const QuizAttemptSafe = z.object({
   id: z.string(),
-  questionId: z.string(),
-  quizId: z.string().optional(),
+  quizId: z.string(),
   quizTitle: z.string().optional(),
-  blankOrder: z.number(),
-  correctAnswer: z.string(),
+  studentId: z.string(),
+  studentName: z.string().optional(),
+  startedAt: z.string().datetime(),
+  submittedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+// ==========================================
+// QUIZ ANSWER SCHEMAS
+// ==========================================
+export const QuizAnswerSafe = z.object({
+  id: z.string(),
+  quizAttemptId: z.string(),
+  quizQuestionId: z.string(),
+  questionText: z.string().optional(),
+  answerText: z.string(),
+  isCorrect: z.boolean(),
+  answeredAt: z.string().datetime(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -122,12 +141,17 @@ export const QuizModel = {
   updateQuestionResult: createResponseSchema(QuizQuestionSafe),
   deleteQuestionResult: createResponseSchema(QuizDeleteSafe),
 
-  // Keywords
-  keyword: createResponseSchema(QuestionKeywordSafe),
-  keywords: createResponseSchema(z.array(QuestionKeywordSafe)),
-  createKeywordResult: createResponseSchema(QuestionKeywordSafe),
-  updateKeywordResult: createResponseSchema(QuestionKeywordSafe),
-  deleteKeywordResult: createResponseSchema(QuizDeleteSafe),
+  // Attempts
+  attempt: createResponseSchema(QuizAttemptSafe),
+  attempts: createResponseSchema(z.array(QuizAttemptSafe)),
+  createAttemptResult: createResponseSchema(QuizAttemptSafe),
+  submitAttemptResult: createResponseSchema(QuizAttemptSafe),
+
+  // Answer
+  answer: createResponseSchema(QuizAnswerSafe),
+  answers: createResponseSchema(z.array(QuizAnswerSafe)),
+  createAnswerResult: createResponseSchema(QuizAnswerSafe),
+  updateAnswerResult: createResponseSchema(QuizAnswerSafe),
 
   // Errors
   error: createErrorSchema(z.null()),
@@ -149,7 +173,7 @@ export type QuizModelType = {
   updateResult: z.infer<typeof QuizModel.updateResult>;
   deleteResult: z.infer<typeof QuizModel.deleteResult>;
 
-  // Quiz Levels (NEW)
+  // Quiz Levels
   level: z.infer<typeof QuizModel.level>;
   levels: z.infer<typeof QuizModel.levels>;
   createLevelResult: z.infer<typeof QuizModel.createLevelResult>;
@@ -162,4 +186,16 @@ export type QuizModelType = {
   createQuestionResult: z.infer<typeof QuizModel.createQuestionResult>;
   updateQuestionResult: z.infer<typeof QuizModel.updateQuestionResult>;
   deleteQuestionResult: z.infer<typeof QuizModel.deleteQuestionResult>;
+
+  // Attempts
+  attempt: z.infer<typeof QuizModel.attempt>;
+  attempts: z.infer<typeof QuizModel.attempts>;
+  createAttemptResult: z.infer<typeof QuizModel.createAttemptResult>;
+  submitAttemptResult: z.infer<typeof QuizModel.submitAttemptResult>;
+
+  // Answer
+  answer: z.infer<typeof QuizModel.answer>;
+  answers: z.infer<typeof QuizModel.answers>;
+  createAnswerResult: z.infer<typeof QuizModel.createAnswerResult>;
+  updateAnswerResult: z.infer<typeof QuizModel.updateAnswerResult>;
 };
