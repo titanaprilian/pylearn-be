@@ -56,53 +56,48 @@ export abstract class DashboardService {
     };
   }
 
-  static async getLecturerDashboard(lecturerId: string, log: Logger) {
-    log.debug({ lecturerId }, "Fetching lecturer dashboard data");
+  static async getLecturerDashboard(log: Logger) {
+    log.debug("Fetching global lecturer dashboard data");
 
-    // 1. Fetch top-level stats and detailed breakdowns concurrently
-    const [totalMaterials, totalQuizzes, materialsData] = await Promise.all([
-      prisma.material.count({ where: { lecturerId } }),
-      prisma.quiz.count({ where: { material: { lecturerId } } }),
-      prisma.material.findMany({
-        where: { lecturerId },
-        select: {
-          id: true,
-          title: true,
-          materialType: true,
-          quizzes: {
-            select: {
-              id: true,
-              levels: {
-                select: {
-                  id: true,
+    // 1. Fetch top-level global stats and detailed breakdowns concurrently without lecturerId limits
+    const [totalMaterials, totalQuizzes, totalAttemptsCount, materialsData] =
+      await Promise.all([
+        prisma.material.count(), // Global materials count
+        prisma.quiz.count(), // Global quizzes count
+        prisma.quizAttempt.count(), // ✅ Global attempts calculated directly at database level for maximum speed
+        prisma.material.findMany({
+          select: {
+            id: true,
+            title: true,
+            materialType: true,
+            quizzes: {
+              select: {
+                id: true,
+                levels: {
+                  select: {
+                    id: true,
+                  },
                 },
-              },
-              _count: {
-                select: { QuizAttempt: true }, // Count total submissions
-              },
-              QuizAttempt: {
-                select: {
-                  studentId: true, // Used to compute unique student engagement count
+                QuizAttempt: {
+                  select: {
+                    studentId: true, // Used to compute unique student engagement count per material
+                  },
                 },
               },
             },
           },
-        },
-      }),
-    ]);
+        }),
+      ]);
 
-    // 2. Map and aggregate child metrics down into simple numbers
-    let totalAttemptsCount = 0;
-
+    // 2. Map and aggregate metrics down per material
     const materialBreakdown = materialsData.map((material) => {
       let quizLevelCount = 0;
       const uniqueStudentsSet = new Set<string>();
 
       material.quizzes.forEach((quiz) => {
         quizLevelCount += quiz.levels.length;
-        totalAttemptsCount += quiz._count.QuizAttempt;
 
-        // Collate unique student IDs who have tried this quiz
+        // Collate unique student IDs who have tried this material's quizzes
         quiz.QuizAttempt.forEach((attempt) => {
           uniqueStudentsSet.add(attempt.studentId);
         });
@@ -119,8 +114,8 @@ export abstract class DashboardService {
     });
 
     log.info(
-      { lecturerId, totalMaterials, totalQuizzes, totalAttemptsCount },
-      "Lecturer dashboard data compiled successfully",
+      { totalMaterials, totalQuizzes, totalAttemptsCount },
+      "Global lecturer dashboard data compiled successfully",
     );
 
     return {

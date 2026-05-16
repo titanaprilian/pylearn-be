@@ -66,7 +66,6 @@ export abstract class MaterialService {
         select: SAFE_MATERIAL_SELECT,
         skip,
         take: limit,
-        orderBy: { createdAt: "desc" },
       }),
       prisma.material.count({ where }),
     ]);

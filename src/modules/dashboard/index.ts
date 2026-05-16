@@ -1,6 +1,6 @@
 import { DashboardService } from "./service";
 import { DashboardModel } from "./model";
-import { successResponse } from "@/libs/response";
+import { errorResponse, successResponse } from "@/libs/response";
 import { createBaseApp, createProtectedApp } from "@/libs/base";
 
 const protectedDashboard = createProtectedApp()
@@ -28,10 +28,7 @@ const protectedDashboard = createProtectedApp()
     "/dosen",
     async ({ user, set, log, locale }) => {
       // Pass the authenticated lecturer's user ID down to the service
-      const dashboard = await DashboardService.getLecturerDashboard(
-        user.id,
-        log,
-      );
+      const dashboard = await DashboardService.getLecturerDashboard(log);
       return successResponse(
         set,
         dashboard,
@@ -71,7 +68,11 @@ const protectedDashboard = createProtectedApp()
         500: DashboardModel.error,
       },
     },
-  );
+  )
+  .onError(({ error, set }) => {
+    console.log("ERROR: ", error);
+    return errorResponse(set, 500, { key: "common.internalServerError" }, null);
+  });
 
 export const dashboard = createBaseApp({ tags: ["Dashboard"] }).group(
   "/dashboard",
