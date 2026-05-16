@@ -75,7 +75,8 @@ model QuizLevel {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  questions QuizQuestion[]
+  questions   QuizQuestion[]
+  QuizAttempt QuizAttempt[]
 
   @@unique([quizId, levelOrder])
 }
@@ -97,8 +98,8 @@ model QuizQuestion {
 
 model QuizAttempt {
   id          BigInt       @id @default(autoincrement())
-  quizId      BigInt
-  quiz        Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizLevelId BigInt
+  quizLevel   QuizLevel    @relation(fields: [quizLevelId], references: [id], onDelete: Cascade)
   studentId   String
   student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
   startedAt   DateTime     @default(now())
@@ -106,8 +107,10 @@ model QuizAttempt {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   answers     QuizAnswer[]
+  Quiz        Quiz?        @relation(fields: [quizId], references: [id])
+  quizId      BigInt?
 
-  @@unique([quizId, studentId])
+  @@unique([quizLevelId, studentId])
 }
 
 model QuizAnswer {

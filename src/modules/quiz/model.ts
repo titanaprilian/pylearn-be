@@ -90,7 +90,7 @@ export const QuizAttemptHistoryItemSchema = z.object({
 
 export const QuizAttemptSafe = z.object({
   id: z.string(),
-  quizId: z.string(),
+  quizLevelId: z.string(),
   quizTitle: z.string().optional(),
   studentId: z.string(),
   studentName: z.string().optional(),

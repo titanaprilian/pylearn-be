@@ -130,7 +130,7 @@ export const KeywordParamSchema = z.object({
 // Quiz Attempt Schema
 // ==========================================
 export const CreateQuizAttemptSchema = z.object({
-  quizId: z.string().min(1, "Quiz ID is required"),
+  quizLevelId: z.string().min(1, "Quiz ID is required"),
 });
 
 export const GetQuizAttemptsQuerySchema = z.object({

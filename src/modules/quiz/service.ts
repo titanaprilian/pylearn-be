@@ -83,13 +83,19 @@ export const STUDENT_QUESTION_SELECT = {
 
 const ATTEMPT_SELECT = {
   id: true,
-  quizId: true,
+  quizLevelId: true,
   studentId: true,
   startedAt: true,
   submittedAt: true,
   createdAt: true,
   updatedAt: true,
-  quiz: { select: { title: true } },
+  quizLevel: {
+    select: {
+      quiz: {
+        select: { title: true },
+      },
+    },
+  },
   student: { select: { name: true } },
 } as const;
 
@@ -167,8 +173,8 @@ function mapQuestion(q: QuestionRecord) {
 function mapAttempt(attempt: AttemptRecord) {
   return {
     id: attempt.id.toString(),
-    quizId: attempt.quizId.toString(),
-    quizTitle: attempt.quiz.title,
+    quizLevelId: attempt.quizLevelId.toString(),
+    quizTitle: attempt.quizLevel.quiz.title,
     studentId: attempt.studentId,
     studentName: attempt.student.name,
     startedAt: attempt.startedAt.toISOString(),
@@ -560,7 +566,7 @@ export abstract class QuizAttemptService {
   static async getProgress(quizId: bigint, studentId: string, log: Logger) {
     log.debug(
       { quizId: quizId.toString(), studentId },
-      "Fetching granular level-by-level quiz progress",
+      "Fetching direct level-by-level quiz progress",
     );
 
     const levels = await prisma.quizLevel.findMany({
@@ -570,58 +576,37 @@ export abstract class QuizAttemptService {
         id: true,
         title: true,
         levelOrder: true,
-        // Include questions count so we know how many answers mean "COMPLETED"
         _count: { select: { questions: true } },
       },
     });
 
-    // 2. Fetch all attempts by this student for this quiz
+    const levelIds = levels.map((l) => l.id);
+
     const attempts = await prisma.quizAttempt.findMany({
-      where: { quizId, studentId },
-      select: { id: true, submittedAt: true, createdAt: true },
-    });
-
-    const attemptIds = attempts.map((a) => a.id);
-
-    // 3. Fetch all answers submitted across these attempts to find out which levels were touched
-    const answers = await prisma.quizAnswer.findMany({
       where: {
-        quizAttemptId: { in: attemptIds },
+        quizLevelId: { in: levelIds },
+        studentId: studentId,
       },
+      orderBy: { createdAt: "desc" }, // Latest attempts come first
       select: {
-        quizAttemptId: true,
-        quizQuestion: {
-          select: { quizLevelId: true },
-        },
+        id: true,
+        quizLevelId: true,
+        submittedAt: true,
+        createdAt: true,
       },
     });
 
-    // 4. Map each level to its distinct execution status
     const levelProgress = levels.map((level) => {
-      // Find answers belonging to this specific level
-      const levelAnswers = answers.filter(
-        (ans) => ans.quizQuestion.quizLevelId === level.id,
+      const latestLevelAttempt = attempts.find(
+        (a) => a.quizLevelId === level.id,
       );
 
       let status = "NOT_STARTED";
       let currentAttemptId: string | null = null;
 
-      if (levelAnswers.length > 0) {
-        // Get the latest attempt ID used for this level
-        const associatedAttemptId =
-          levelAnswers[levelAnswers.length - 1].quizAttemptId;
-        const parentAttempt = attempts.find(
-          (a) => a.id === associatedAttemptId,
-        );
-
-        currentAttemptId = associatedAttemptId.toString();
-
-        // If the parent quiz attempt is finalized/submitted, the level is COMPLETED
-        if (parentAttempt?.submittedAt) {
-          status = "COMPLETED";
-        } else {
-          status = "IN_PROGRESS";
-        }
+      if (latestLevelAttempt) {
+        currentAttemptId = latestLevelAttempt.id.toString();
+        status = latestLevelAttempt.submittedAt ? "COMPLETED" : "IN_PROGRESS";
       }
 
       return {
@@ -635,8 +620,12 @@ export abstract class QuizAttemptService {
     });
 
     log.info(
-      { studentId, quizId: quizId.toString() },
-      "Level progress mapped successfully",
+      {
+        studentId,
+        quizId: quizId.toString(),
+        totalLevelsMapped: levels.length,
+      },
+      "Granular level progress compiled successfully",
     );
 
     return {
@@ -655,15 +644,49 @@ export abstract class QuizAttemptService {
     data: CreateQuizAttemptInput,
     log: Logger,
   ) {
-    const quizId = BigInt(data.quizId);
-    log.debug({ quizId: quizId.toString(), studentId }, "Creating attempt");
+    const quizLevelId = BigInt(data.quizLevelId);
+    log.debug(
+      { quizLevelId: quizLevelId.toString(), studentId },
+      "Creating level attempt",
+    );
 
+    // 🛑 DEFENSIVE GUARD: Prevent creating multiple active attempts for the same level
+    const existingActiveAttempt = await prisma.quizAttempt.findFirst({
+      where: {
+        studentId: studentId,
+        quizLevelId: quizLevelId,
+        submittedAt: null,
+      },
+    });
+
+    if (existingActiveAttempt) {
+      log.warn(
+        {
+          studentId,
+          quizLevelId: quizLevelId.toString(),
+          attemptId: existingActiveAttempt.id.toString(),
+        },
+        "Blocked duplicate active attempt creation request",
+      );
+      // Throw your custom domain business exception to be handled gracefully by your .onError handler
+      throw new QuizAttemptValidationError(
+        "You already have an active session for this level. Please submit it first.",
+      );
+    }
+
+    // Atomic execution creation using updated structural parameters
     const attempt = await prisma.quizAttempt.create({
-      data: { quizId, studentId },
+      data: {
+        quizLevelId, // ✅ Updated reference mapping key
+        studentId,
+      },
       select: ATTEMPT_SELECT,
     });
 
-    log.info({ attemptId: attempt.id.toString() }, "Attempt created");
+    log.info(
+      { attemptId: attempt.id.toString() },
+      "Level attempt session instantiated successfully",
+    );
     return mapAttempt(attempt);
   }
 
