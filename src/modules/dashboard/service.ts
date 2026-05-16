@@ -131,20 +131,23 @@ export abstract class DashboardService {
   static async getStudentDashboard(studentId: string, log: Logger) {
     log.debug({ studentId }, "Fetching student progression dashboard data");
 
-    // 1. Grab all historical attempts with corresponding top-level information
     const attempts = await prisma.quizAttempt.findMany({
       where: { studentId },
       include: {
-        quiz: {
+        quizLevel: {
           select: {
-            title: true,
+            quiz: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
           },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    // 2. Process metrics via array loops
     const totalAttempts = attempts.length;
     const completedAttempts = attempts.filter((a) => a.submittedAt !== null);
     const inProgressAttempts = attempts.filter((a) => a.submittedAt === null);
@@ -165,14 +168,16 @@ export abstract class DashboardService {
       },
       inProgress: inProgressAttempts.map((a) => ({
         attemptId: a.id.toString(),
-        quizId: a.quizId.toString(),
-        quizTitle: a.quiz.title,
+        quizLevelId: a.quizLevelId.toString(),
+        quizId: a.quizLevel.quiz.id.toString(),
+        quizTitle: a.quizLevel.quiz.title,
         startedAt: a.createdAt.toISOString(),
       })),
       recentResults: completedAttempts.slice(0, 5).map((a) => ({
         attemptId: a.id.toString(),
-        quizId: a.quizId.toString(),
-        quizTitle: a.quiz.title,
+        quizLevelId: a.quizLevelId.toString(), // ✅ Updated from quizId
+        quizId: a.quizLevel.quiz.id.toString(), // ✅ Extracted safely from nested relation
+        quizTitle: a.quizLevel.quiz.title, // ✅ Extracted safely from nested relation
         submittedAt: a.submittedAt!.toISOString(),
       })),
     };
