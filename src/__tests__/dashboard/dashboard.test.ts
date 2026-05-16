@@ -124,3 +124,170 @@ describe("GET /dashboard", () => {
     expect(json.data.userDistribution.length).toBeGreaterThan(0);
   });
 });
+
+describe("GET /dashboard/dosen", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("should aggregate data correctly for a lecturer", async () => {
+    const role = await createTestRoleWithPermissions("LecturerRole", [
+      { featureName: "dashboard_management", action: "read" },
+    ]);
+    const roleMahasiswa = await createTestRoleWithPermissions("MahasiswaRole", [
+      { featureName: "dashboard_management", action: "read" },
+    ]);
+
+    const { user: lecturer, authHeaders } = await createAuthenticatedUser({
+      roleId: role.id,
+    });
+
+    const student = await prisma.user.create({
+      data: {
+        email: "student@test.com",
+        password: "hashed_password",
+        name: "Test Student",
+        roleId: roleMahasiswa.id,
+        isActive: true,
+      },
+    });
+
+    const material = await prisma.material.create({
+      data: {
+        title: "Architecture Patterns",
+        materialType: "text",
+        lecturerId: lecturer.id,
+      },
+    });
+
+    const quiz = await prisma.quiz.create({
+      data: {
+        materialId: material.id,
+        title: "System Design Quiz",
+        isPublished: true,
+      },
+    });
+
+    // Add 2 levels under the quiz
+    await prisma.quizLevel.createMany({
+      data: [
+        { quizId: quiz.id, title: "Level 1 Basics", levelOrder: 1 },
+        { quizId: quiz.id, title: "Level 2 Advanced", levelOrder: 2 },
+      ],
+    });
+
+    // Add 1 quiz attempt from the student
+    await prisma.quizAttempt.create({
+      data: {
+        quizId: quiz.id,
+        studentId: student.id,
+        submittedAt: new Date(),
+      },
+    });
+
+    // 3. Fire request to the handler
+    const res = await app.handle(
+      new Request("http://localhost/dashboard/dosen", {
+        method: "GET",
+        headers: authHeaders,
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+
+    // 4. Assert calculated counters match exactly
+    expect(json.data.overview.totalMaterials).toBe(1);
+    expect(json.data.overview.totalQuizzes).toBe(1);
+    expect(json.data.overview.totalStudentAttempts).toBe(1);
+
+    expect(json.data.materialBreakdown).toHaveLength(1);
+    expect(json.data.materialBreakdown[0].title).toBe("Architecture Patterns");
+    expect(json.data.materialBreakdown[0].quizCount).toBe(1);
+    expect(json.data.materialBreakdown[0].levelCount).toBe(2);
+    expect(json.data.materialBreakdown[0].uniqueStudentsEngaged).toBe(1);
+  });
+});
+
+describe("GET /dashboard/mahasiswa", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  it("should process and categorize unsubmitted vs submitted quiz history", async () => {
+    const role = await createTestRoleWithPermissions("StudentRole", [
+      { featureName: "dashboard_management", action: "read" },
+    ]);
+    const { user: student, authHeaders } = await createAuthenticatedUser({
+      roleId: role.id,
+    });
+
+    // Create a generic material & quizzes to reference
+    const material = await prisma.material.create({
+      data: {
+        title: "Calculus",
+        materialType: "video",
+        lecturerId: student.id, // Re-using user for material dependency requirements
+      },
+    });
+
+    const quiz1 = await prisma.quiz.create({
+      data: { materialId: material.id, title: "Quiz 1", isPublished: true },
+    });
+    const quiz2 = await prisma.quiz.create({
+      data: { materialId: material.id, title: "Quiz 2", isPublished: true },
+    });
+
+    // 2. Create 1 completed attempt and 1 in-progress attempt
+    await prisma.quizAttempt.create({
+      data: {
+        quizId: quiz1.id,
+        studentId: student.id,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        submittedAt: new Date("2026-01-01T01:00:00.000Z"),
+      },
+    });
+
+    await prisma.quizAttempt.create({
+      data: {
+        quizId: quiz2.id,
+        studentId: student.id,
+        createdAt: new Date("2026-02-01T00:00:00.000Z"),
+        submittedAt: null, // Active execution item
+      },
+    });
+
+    // 3. Fire request to handler
+    const res = await app.handle(
+      new Request("http://localhost/dashboard/mahasiswa", {
+        method: "GET",
+        headers: authHeaders,
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+
+    // 4. Assert separate arrays map out into logical components cleanly
+    expect(json.data.overview.totalAttempts).toBe(2);
+    expect(json.data.overview.quizzesCompleted).toBe(1);
+
+    // Verify in-progress block parsing targets
+    expect(json.data.inProgress).toHaveLength(1);
+    expect(json.data.inProgress[0].quizTitle).toBe("Quiz 2");
+    expect(json.data.inProgress[0].startedAt).toBeDefined();
+
+    // Verify historic result lists parse correctly
+    expect(json.data.recentResults).toHaveLength(1);
+    expect(json.data.recentResults[0].quizTitle).toBe("Quiz 1");
+    expect(json.data.recentResults[0].submittedAt).toBeDefined();
+  });
+});

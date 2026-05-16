@@ -55,4 +55,131 @@ export abstract class DashboardService {
       userDistribution: roleDistribution,
     };
   }
+
+  static async getLecturerDashboard(lecturerId: string, log: Logger) {
+    log.debug({ lecturerId }, "Fetching lecturer dashboard data");
+
+    // 1. Fetch top-level stats and detailed breakdowns concurrently
+    const [totalMaterials, totalQuizzes, materialsData] = await Promise.all([
+      prisma.material.count({ where: { lecturerId } }),
+      prisma.quiz.count({ where: { material: { lecturerId } } }),
+      prisma.material.findMany({
+        where: { lecturerId },
+        select: {
+          id: true,
+          title: true,
+          materialType: true,
+          quizzes: {
+            select: {
+              id: true,
+              levels: {
+                select: {
+                  id: true,
+                },
+              },
+              _count: {
+                select: { QuizAttempt: true }, // Count total submissions
+              },
+              QuizAttempt: {
+                select: {
+                  studentId: true, // Used to compute unique student engagement count
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    // 2. Map and aggregate child metrics down into simple numbers
+    let totalAttemptsCount = 0;
+
+    const materialBreakdown = materialsData.map((material) => {
+      let quizLevelCount = 0;
+      const uniqueStudentsSet = new Set<string>();
+
+      material.quizzes.forEach((quiz) => {
+        quizLevelCount += quiz.levels.length;
+        totalAttemptsCount += quiz._count.QuizAttempt;
+
+        // Collate unique student IDs who have tried this quiz
+        quiz.QuizAttempt.forEach((attempt) => {
+          uniqueStudentsSet.add(attempt.studentId);
+        });
+      });
+
+      return {
+        materialId: material.id.toString(),
+        title: material.title,
+        materialType: material.materialType,
+        quizCount: material.quizzes.length,
+        levelCount: quizLevelCount,
+        uniqueStudentsEngaged: uniqueStudentsSet.size,
+      };
+    });
+
+    log.info(
+      { lecturerId, totalMaterials, totalQuizzes, totalAttemptsCount },
+      "Lecturer dashboard data compiled successfully",
+    );
+
+    return {
+      overview: {
+        totalMaterials,
+        totalQuizzes,
+        totalStudentAttempts: totalAttemptsCount,
+      },
+      materialBreakdown,
+    };
+  }
+
+  static async getStudentDashboard(studentId: string, log: Logger) {
+    log.debug({ studentId }, "Fetching student progression dashboard data");
+
+    // 1. Grab all historical attempts with corresponding top-level information
+    const attempts = await prisma.quizAttempt.findMany({
+      where: { studentId },
+      include: {
+        quiz: {
+          select: {
+            title: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // 2. Process metrics via array loops
+    const totalAttempts = attempts.length;
+    const completedAttempts = attempts.filter((a) => a.submittedAt !== null);
+    const inProgressAttempts = attempts.filter((a) => a.submittedAt === null);
+
+    log.info(
+      {
+        studentId,
+        totalAttempts,
+        completed: completedAttempts.length,
+      },
+      "Student dashboard metrics processed successfully",
+    );
+
+    return {
+      overview: {
+        totalAttempts,
+        quizzesCompleted: completedAttempts.length,
+      },
+      inProgress: inProgressAttempts.map((a) => ({
+        attemptId: a.id.toString(),
+        quizId: a.quizId.toString(),
+        quizTitle: a.quiz.title,
+        startedAt: a.createdAt.toISOString(),
+      })),
+      recentResults: completedAttempts.slice(0, 5).map((a) => ({
+        attemptId: a.id.toString(),
+        quizId: a.quizId.toString(),
+        quizTitle: a.quiz.title,
+        submittedAt: a.submittedAt!.toISOString(),
+      })),
+    };
+  }
 }
