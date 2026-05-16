@@ -560,35 +560,89 @@ export abstract class QuizAttemptService {
   static async getProgress(quizId: bigint, studentId: string, log: Logger) {
     log.debug(
       { quizId: quizId.toString(), studentId },
-      "Fetching quiz progress",
+      "Fetching granular level-by-level quiz progress",
     );
 
-    const attempts = await prisma.quizAttempt.findMany({
-      where: {
-        quizId: quizId,
-        studentId: studentId,
+    const levels = await prisma.quizLevel.findMany({
+      where: { quizId: quizId },
+      orderBy: { levelOrder: "asc" },
+      select: {
+        id: true,
+        title: true,
+        levelOrder: true,
+        // Include questions count so we know how many answers mean "COMPLETED"
+        _count: { select: { questions: true } },
       },
-      orderBy: { createdAt: "desc" },
     });
 
-    const latestAttempt = attempts[0];
-    let status = "NOT_STARTED";
+    // 2. Fetch all attempts by this student for this quiz
+    const attempts = await prisma.quizAttempt.findMany({
+      where: { quizId, studentId },
+      select: { id: true, submittedAt: true, createdAt: true },
+    });
 
-    if (latestAttempt) {
-      status = latestAttempt.submittedAt ? "COMPLETED" : "IN_PROGRESS";
-    }
+    const attemptIds = attempts.map((a) => a.id);
+
+    // 3. Fetch all answers submitted across these attempts to find out which levels were touched
+    const answers = await prisma.quizAnswer.findMany({
+      where: {
+        quizAttemptId: { in: attemptIds },
+      },
+      select: {
+        quizAttemptId: true,
+        quizQuestion: {
+          select: { quizLevelId: true },
+        },
+      },
+    });
+
+    // 4. Map each level to its distinct execution status
+    const levelProgress = levels.map((level) => {
+      // Find answers belonging to this specific level
+      const levelAnswers = answers.filter(
+        (ans) => ans.quizQuestion.quizLevelId === level.id,
+      );
+
+      let status = "NOT_STARTED";
+      let currentAttemptId: string | null = null;
+
+      if (levelAnswers.length > 0) {
+        // Get the latest attempt ID used for this level
+        const associatedAttemptId =
+          levelAnswers[levelAnswers.length - 1].quizAttemptId;
+        const parentAttempt = attempts.find(
+          (a) => a.id === associatedAttemptId,
+        );
+
+        currentAttemptId = associatedAttemptId.toString();
+
+        // If the parent quiz attempt is finalized/submitted, the level is COMPLETED
+        if (parentAttempt?.submittedAt) {
+          status = "COMPLETED";
+        } else {
+          status = "IN_PROGRESS";
+        }
+      }
+
+      return {
+        levelId: level.id.toString(),
+        title: level.title,
+        levelOrder: level.levelOrder,
+        status: status,
+        currentAttemptId: currentAttemptId,
+        totalQuestions: level._count.questions,
+      };
+    });
 
     log.info(
       { studentId, quizId: quizId.toString() },
-      "Progress mapped successfully",
+      "Level progress mapped successfully",
     );
 
     return {
       quizId: quizId.toString(),
-      status: status,
-      currentAttemptId: latestAttempt?.id.toString() ?? null,
-      totalAttempts: attempts.length,
-      history: attempts.map((a) => ({
+      levels: levelProgress,
+      attemptHistory: attempts.map((a) => ({
         id: a.id.toString(),
         submittedAt: a.submittedAt?.toISOString() ?? null,
         createdAt: a.createdAt.toISOString(),

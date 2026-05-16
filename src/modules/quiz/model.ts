@@ -100,12 +100,19 @@ export const QuizAttemptSafe = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const QuizLevelProgressSchema = z.object({
+  levelId: z.string(),
+  title: z.string(),
+  levelOrder: z.number().int(),
+  status: z.enum(["NOT_STARTED", "IN_PROGRESS", "COMPLETED"]),
+  currentAttemptId: z.string().nullable(),
+  totalQuestions: z.number().int(),
+});
+
 export const QuizProgressSafe = z.object({
   quizId: z.string(),
-  status: QuizProgressStatusSchema,
-  currentAttemptId: z.string().nullable(),
-  totalAttempts: z.number().int().nonnegative(),
-  history: z.array(QuizAttemptHistoryItemSchema),
+  levels: z.array(QuizLevelProgressSchema),
+  attemptHistory: z.array(QuizAttemptHistoryItemSchema),
 });
 
 // ==========================================
