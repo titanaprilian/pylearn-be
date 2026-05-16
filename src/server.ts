@@ -17,6 +17,7 @@ import { globalRateLimit } from "./plugins/rate-limit";
 import { env } from "./config/env";
 import { helmet } from "elysia-helmet";
 import { globalErrorHandler } from "./middleware/error";
+import { loggerMiddleware } from "./middleware/logger";
 import cron from "@elysiajs/cron";
 import { AuthService } from "./modules/auth/service";
 import staticPlugin from "@elysiajs/static";
@@ -39,6 +40,7 @@ export const app = new Elysia()
       exposedHeaders: ["Content-Language"],
     }),
   )
+  .use(loggerMiddleware)
   .use(
     helmet({
       contentSecurityPolicy: {
@@ -77,7 +79,10 @@ export const app = new Elysia()
   .use(materials)
   .use(quizzes)
   .use(globalErrorHandler)
-  .listen(port);
+  .listen({
+    port,
+    hostname: "0.0.0.0",
+  });
 
 logger.info(
   {

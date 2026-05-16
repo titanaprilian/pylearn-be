@@ -28,12 +28,16 @@ ENV NODE_ENV=production
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/generated ./generated
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/bun.lock ./bun.lock
+COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY entrypoint.sh ./entrypoint.sh
 
 RUN chmod +x ./entrypoint.sh
+RUN mkdir -p storage/materials
 
 EXPOSE 3000
 ENTRYPOINT ["./entrypoint.sh"]
+

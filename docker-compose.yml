@@ -1,16 +1,51 @@
 services:
   app:
-    image: my-elysia-app
+    build: .
+    image: pylearn-be
+    container_name: pylearn-backend
     ports:
-      - "3000:3000"
+      - "4000:4000"
     env_file:
       - .env.docker
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    networks:
+      pylearn-network:
+        aliases:
+          - backend
 
   db:
     image: postgres:16
+    container_name: pylearn-db
     environment:
-      POSTGRES_DB: elysia_auth
+      POSTGRES_DB: pylearn
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pylearn-network
+
+  frontend:
+    build:
+      context: ../pylearn-fe
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:4000
+    image: pylearn-fe
+    container_name: pylearn-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - app
+    networks:
+      - pylearn-network
+
+networks:
+  pylearn-network:
+    name: pylearn-network
+    driver: bridge
