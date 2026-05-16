@@ -552,6 +552,45 @@ export abstract class QuizAttemptService {
     return { ...mapAttempt(attempt), answers: attempt.answers.map(mapAnswer) };
   }
 
+  static async getProgress(quizId: bigint, studentId: string, log: Logger) {
+    log.debug(
+      { quizId: quizId.toString(), studentId },
+      "Fetching quiz progress",
+    );
+
+    const attempts = await prisma.quizAttempt.findMany({
+      where: {
+        quizId: quizId,
+        studentId: studentId,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const latestAttempt = attempts[0];
+    let status = "NOT_STARTED";
+
+    if (latestAttempt) {
+      status = latestAttempt.submittedAt ? "COMPLETED" : "IN_PROGRESS";
+    }
+
+    log.info(
+      { studentId, quizId: quizId.toString() },
+      "Progress mapped successfully",
+    );
+
+    return {
+      quizId: quizId.toString(),
+      status: status,
+      currentAttemptId: latestAttempt?.id.toString() ?? null,
+      totalAttempts: attempts.length,
+      history: attempts.map((a) => ({
+        id: a.id.toString(),
+        submittedAt: a.submittedAt?.toISOString() ?? null,
+        createdAt: a.createdAt.toISOString(),
+      })),
+    };
+  }
+
   static async createAttempt(
     studentId: string,
     data: CreateQuizAttemptInput,
@@ -564,8 +603,6 @@ export abstract class QuizAttemptService {
       data: { quizId, studentId },
       select: ATTEMPT_SELECT,
     });
-
-    console.log(attempt.student);
 
     log.info({ attemptId: attempt.id.toString() }, "Attempt created");
     return mapAttempt(attempt);

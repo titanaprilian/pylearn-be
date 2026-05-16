@@ -75,6 +75,19 @@ export const QuizQuestionWithoutAnswerText = z.object({
 // ==========================================
 // QUIZ ATTEMPT SCHEMAS
 // ==========================================
+
+export const QuizProgressStatusSchema = z.enum([
+  "NOT_STARTED",
+  "IN_PROGRESS",
+  "COMPLETED",
+]);
+
+export const QuizAttemptHistoryItemSchema = z.object({
+  id: z.string(),
+  submittedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+});
+
 export const QuizAttemptSafe = z.object({
   id: z.string(),
   quizId: z.string(),
@@ -85,6 +98,14 @@ export const QuizAttemptSafe = z.object({
   submittedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+});
+
+export const QuizProgressSafe = z.object({
+  quizId: z.string(),
+  status: QuizProgressStatusSchema,
+  currentAttemptId: z.string().nullable(),
+  totalAttempts: z.number().int().nonnegative(),
+  history: z.array(QuizAttemptHistoryItemSchema),
 });
 
 // ==========================================
@@ -157,6 +178,7 @@ export const QuizModel = {
   attempts: createResponseSchema(z.array(QuizAttemptSafe)),
   createAttemptResult: createResponseSchema(QuizAttemptSafe),
   submitAttemptResult: createResponseSchema(QuizAttemptSafe),
+  quizProgress: createResponseSchema(QuizProgressSafe),
 
   // Answer
   answer: createResponseSchema(QuizAnswerSafe),
@@ -204,6 +226,7 @@ export type QuizModelType = {
   attempts: z.infer<typeof QuizModel.attempts>;
   createAttemptResult: z.infer<typeof QuizModel.createAttemptResult>;
   submitAttemptResult: z.infer<typeof QuizModel.submitAttemptResult>;
+  quizProgress: z.infer<typeof QuizModel.quizProgress>;
 
   // Answer
   answer: z.infer<typeof QuizModel.answer>;

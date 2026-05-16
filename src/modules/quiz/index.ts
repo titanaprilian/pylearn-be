@@ -385,8 +385,27 @@ const attemptRoutes = createProtectedApp()
       },
       beforeHandle: hasPermission(FEATURE, "update"),
     },
-  );
+  )
+  .get(
+    "/status/me",
+    async ({ query, user, set, log, locale }) => {
+      const progress = await QuizAttemptService.getProgress(
+        BigInt(query.quizId),
+        user.id,
+        log,
+      );
 
+      return ok({ set, locale }, progress, "quizAttempt.progressSuccess");
+    },
+    {
+      query: GetQuizLevelsQuerySchema,
+      response: {
+        200: QuizModel.quizProgress,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE, "read"),
+    },
+  );
 const answerRoutes = createProtectedApp()
   .get(
     "/",
