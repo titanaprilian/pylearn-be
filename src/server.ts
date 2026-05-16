@@ -19,6 +19,8 @@ import { helmet } from "elysia-helmet";
 import { globalErrorHandler } from "./middleware/error";
 import cron from "@elysiajs/cron";
 import { AuthService } from "./modules/auth/service";
+import staticPlugin from "@elysiajs/static";
+import { join } from "path";
 
 const port = Number(env.PORT ?? 3000);
 
@@ -48,6 +50,12 @@ export const app = new Elysia()
           connectSrc: ["'self'"],
         },
       },
+    }),
+  )
+  .use(
+    staticPlugin({
+      assets: join(process.cwd(), "storage"),
+      prefix: "/storage",
     }),
   )
   .use(globalRateLimit)

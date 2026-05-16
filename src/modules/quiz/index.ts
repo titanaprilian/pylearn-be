@@ -483,6 +483,8 @@ export const quizzes = createBaseApp({ tags: ["Quizzes"] }).group(
         ) {
           return errorResponse(set, 400, error.message, null, locale);
         }
+
+        console.log("ERROR: ", error);
         return errorResponse(
           set,
           500,
