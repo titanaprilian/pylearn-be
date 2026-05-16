@@ -9,9 +9,14 @@ import type {
   CreateQuizAttemptInput,
   CreateQuizAnswerInput,
   UpdateQuizAnswerInput,
+  CreateBulkQuizAnswerInput,
 } from "./schema";
 import type { Logger } from "pino";
-import { InvalidTimeRangeError } from "./error";
+import {
+  InvalidTimeRangeError,
+  QuizAttemptContextException,
+  QuizAttemptValidationError,
+} from "./error";
 import { Prisma } from "@generated/prisma";
 
 // ─────────────────────────────────────────────
@@ -671,6 +676,105 @@ export abstract class QuizAnswerService {
 
     log.info({ answerId: answer.id.toString(), isCorrect }, "Answer created");
     return mapAnswer(answer);
+  }
+
+  static async createBulkAnswers(
+    data: CreateBulkQuizAnswerInput,
+    studentId: string,
+    log: Logger,
+  ) {
+    const quizAttemptId = BigInt(data.quizAttemptId);
+    const quizId = BigInt(data.quizId);
+    const quizLevelId = BigInt(data.quizLevelId);
+
+    log.debug(
+      { quizAttemptId: data.quizAttemptId, quizLevelId: data.quizLevelId },
+      "Processing bulk quiz answers submission",
+    );
+
+    // 1. Context & Security Guard: Verify the attempt is active and belongs to the student
+    const activeAttempt = await prisma.quizAttempt.findFirst({
+      where: {
+        id: quizAttemptId,
+        quizId: quizId,
+        studentId: studentId,
+        submittedAt: null, // Guard: Must not be already finalized
+      },
+    });
+
+    if (!activeAttempt) {
+      throw new QuizAttemptContextException(
+        "Invalid, closed, or unauthorized quiz attempt context provided.",
+      );
+    }
+
+    // 2. Fetch all valid questions belonging specifically to this quiz level
+    const validQuestions = await prisma.quizQuestion.findMany({
+      where: { quizLevelId: quizLevelId },
+      select: { id: true, answerText: true },
+    });
+
+    // Turn it into a Map for lightning-fast O(1) lookups
+    const questionMap = new Map(
+      validQuestions.map((q) => [q.id, q.answerText]),
+    );
+
+    // 3. Prepare the database rows & compute correctness in-memory
+    const recordsToInsert = data.answers.map((incoming) => {
+      const questionId = BigInt(incoming.quizQuestionId);
+      const correctAnswerText = questionMap.get(questionId);
+
+      // Guard: Ensure the question actually belongs to the claimed quiz level
+      if (correctAnswerText === undefined) {
+        throw new QuizAttemptValidationError(
+          `Question ID ${incoming.quizQuestionId} does not belong to the requested quiz level.`,
+        );
+      }
+
+      const isCorrect =
+        normalizeAnswer(correctAnswerText) ===
+        normalizeAnswer(incoming.answerText);
+
+      return {
+        quizAttemptId,
+        quizQuestionId: questionId,
+        answerText: incoming.answerText,
+        isCorrect,
+      };
+    });
+
+    // 4. Atomic Bulk Insert via Transaction
+    // Using a transaction + deleteMany + createMany handles updates gracefully if they retry/overwrite answers
+    const savedAnswers = await prisma.$transaction(async (tx) => {
+      // Optional: Clear prior answers for these questions in this attempt if allowing re-saves
+      const targetQuestionIds = recordsToInsert.map((r) => r.quizQuestionId);
+      await tx.quizAnswer.deleteMany({
+        where: {
+          quizAttemptId,
+          quizQuestionId: { in: targetQuestionIds },
+        },
+      });
+
+      // Insert all records in one efficient batch query
+      await tx.quizAnswer.createMany({
+        data: recordsToInsert,
+      });
+
+      // Fetch back the created rows to return to the client mapped correctly
+      return tx.quizAnswer.findMany({
+        where: {
+          quizAttemptId,
+          quizQuestionId: { in: targetQuestionIds },
+        },
+        select: ANSWER_SELECT,
+      });
+    });
+
+    log.info(
+      { quizAttemptId: data.quizAttemptId, totalSaved: savedAnswers.length },
+      "Bulk answers processed successfully",
+    );
+    return savedAnswers.map(mapAnswer);
   }
 
   static async updateAnswer(

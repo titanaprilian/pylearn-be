@@ -185,6 +185,7 @@ export const QuizModel = {
   answers: createResponseSchema(z.array(QuizAnswerSafe)),
   createAnswerResult: createResponseSchema(QuizAnswerSafe),
   updateAnswerResult: createResponseSchema(QuizAnswerSafe),
+  createBulkAnswerResult: createResponseSchema(z.array(QuizAnswerSafe)),
 
   // Errors
   error: createErrorSchema(z.null()),

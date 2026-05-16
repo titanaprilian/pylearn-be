@@ -25,12 +25,18 @@ import {
   CreateQuizAnswerSchema,
   QuizAnswerParamSchema,
   UpdateQuizAnswerSchema,
+  CreateBulkQuizAnswerSchema,
 } from "./schema";
 import { successResponse, errorResponse } from "@/libs/response";
 import { createBaseApp, createProtectedApp } from "@/libs/base";
 import { Prisma } from "@generated/prisma";
 import { hasPermission } from "@/middleware/permission";
-import { InvalidTimeRangeError, CannotDeleteQuestionError } from "./error";
+import {
+  InvalidTimeRangeError,
+  CannotDeleteQuestionError,
+  QuizAttemptValidationError,
+  QuizAttemptContextException,
+} from "./error";
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -460,8 +466,29 @@ const answerRoutes = createProtectedApp()
       },
       beforeHandle: hasPermission(FEATURE, "update"),
     },
+  )
+  .post(
+    "/bulk",
+    async ({ body, user, set, log, locale }) => {
+      // Pass the request input alongside the verified student user session ID
+      const answers = await QuizAnswerService.createBulkAnswers(
+        body,
+        user.id,
+        log,
+      );
+      return ok({ set, locale }, answers, "quizAnswer.bulkCreateSuccess", 201);
+    },
+    {
+      body: CreateBulkQuizAnswerSchema,
+      response: {
+        201: QuizModel.createBulkAnswerResult,
+        400: QuizModel.validationError,
+        404: QuizModel.error,
+        500: QuizModel.error,
+      },
+      beforeHandle: hasPermission(FEATURE, "create"),
+    },
   );
-
 // ─────────────────────────────────────────────
 // App assembly
 // ─────────────────────────────────────────────
@@ -498,9 +525,14 @@ export const quizzes = createBaseApp({ tags: ["Quizzes"] }).group(
         }
         if (
           error instanceof InvalidTimeRangeError ||
-          error instanceof CannotDeleteQuestionError
+          error instanceof CannotDeleteQuestionError ||
+          error instanceof QuizAttemptValidationError
         ) {
           return errorResponse(set, 400, error.message, null, locale);
+        }
+
+        if (error instanceof QuizAttemptContextException) {
+          return errorResponse(set, 403, error.message, null, locale);
         }
 
         console.log("ERROR: ", error);

@@ -169,6 +169,20 @@ export const QuizAnswerParamSchema = z.object({
   id: z.string(),
 });
 
+export const CreateBulkQuizAnswerSchema = z.object({
+  quizAttemptId: z.string().min(1, "Quiz Attempt ID is required"),
+  quizId: z.string().min(1, "Quiz ID is required"),
+  quizLevelId: z.string().min(1, "Quiz Level ID is required"),
+  answers: z
+    .array(
+      z.object({
+        quizQuestionId: z.string().min(1, "Question ID is required"),
+        answerText: z.string().min(1, "Answer text cannot be empty"),
+      }),
+    )
+    .min(1, "At least one answer must be submitted"),
+});
+
 export type CreateQuizInput = z.infer<typeof CreateQuizSchema>;
 export type UpdateQuizInput = z.infer<typeof UpdateQuizSchema>;
 export type CreateQuizQuestionInput = z.infer<typeof CreateQuizQuestionSchema>;
@@ -187,4 +201,7 @@ export type GetQuizAttemptsQueryInput = z.infer<
 >;
 export type GetQuizAnswersQueryInput = z.infer<
   typeof GetQuizAnswersQuerySchema
+>;
+export type CreateBulkQuizAnswerInput = z.infer<
+  typeof CreateBulkQuizAnswerSchema
 >;
